@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Admin data - stored in database
+model User {
+  id              Int      @id @default(autoincrement())
+  walletAddress   String   @unique @map("wallet_address") @db.VarChar(42)
+  nickname        String?  @db.VarChar(100)
+  totalAuraPoints Int      @default(0) @map("total_aura_points")
+  totalContributed Decimal @default(0) @db.Decimal(18, 8) @map("total_contributed")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model AdminLog {
+  id           Int      @id @default(autoincrement())
+  action       String   @db.VarChar(100)
+  details      Json?
+  adminAddress String?  @map("admin_address") @db.VarChar(42)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("admin_logs")
+}
+
+model SystemStat {
+  id         Int      @id @default(autoincrement())
+  totalGroups Int     @default(0) @map("total_groups")
+  totalUsers Int      @default(0) @map("total_users")
+  totalVolume Decimal @default(0) @db.Decimal(18, 8) @map("total_volume")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("system_stats")
+}
