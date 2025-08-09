@@ -15,7 +15,9 @@ RUN cd concordia-main && npm install
 COPY . .
 
 # Build the application
-RUN cd concordia-main && npm run build
+RUN --mount=type=cache,id=next-cache,target=/app/concordia-main/.next/cache \
+    --mount=type=cache,id=node-modules-cache,target=/app/node_modules/.cache \
+    cd concordia-main && npm run build
 
 # Production stage
 FROM node:18-alpine AS runner
