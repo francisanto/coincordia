@@ -8,15 +8,16 @@ COPY package*.json ./
 COPY concordia-main/package*.json ./concordia-main/
 
 # Install dependencies
-RUN npm install
-RUN cd concordia-main && npm install
+RUN npm ci
+RUN cd concordia-main && npm ci
 
 # Copy source files
 COPY . .
 
 # Build the application
-RUN --mount=type=cache,id=next-cache,target=/app/concordia-main/.next/cache \
-    --mount=type=cache,id=node-modules-cache,target=/app/node_modules/.cache \
+RUN --mount=type=cache,id=s/1f65545c-bdb0-4e29-8482-ac6bfeceb13a-next/cache,target=/app/.next/cache \
+    --mount=type=cache,id=s/1f65545c-bdb0-4e29-8482-ac6bfeceb13a-concordia-main/next/cache,target=/app/concordia-main/.next/cache \
+    --mount=type=cache,id=s/1f65545c-bdb0-4e29-8482-ac6bfeceb13a-node_modules/cache,target=/app/node_modules/.cache \
     cd concordia-main && npm run build
 
 # Production stage
@@ -31,8 +32,8 @@ COPY --from=builder /app/concordia-main/package*.json ./concordia-main/
 COPY --from=builder /app/package*.json ./
 
 # Install production dependencies
-RUN npm install --production
-RUN cd concordia-main && npm install --production
+RUN npm ci --production
+RUN cd concordia-main && npm ci --production
 
 ENV NODE_ENV=production
 ENV PORT=3000
