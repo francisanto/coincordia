@@ -307,6 +307,11 @@ export function GroupDashboard({ groups, onGroupsChange, userAddress }: GroupDas
         <GroupDetailsModal
           group={selectedGroup}
           onClose={() => setShowDetailsModal(false)}
+          onDeleteGroup={async (groupId) => {
+            // Call the parent component's onGroupsChange to refresh the list after deletion
+            await window.concordiaApp.handleDeleteGroup(groupId);
+            onGroupsChange();
+          }}
         />
       )}
     </div>

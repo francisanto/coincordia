@@ -84,41 +84,53 @@ export class IPFSService {
   private inviteCodes: Map<string, { groupId: string, createdBy: string, timestamp: number }> = new Map();
 
   constructor() {
-    // Primary free public IPFS node
-    this.client = create({
-      host: '4everland.io',
-      port: 5001,
-      protocol: 'https',
-      timeout: 15000,
-    });
-    
-    // Fallback IPFS nodes (all free)
-    this.fallbackClients = [
-      create({
-        host: 'dweb.link',
-        port: 443,
-        protocol: 'https',
-        timeout: 15000,
-      }),
-      create({
-        host: 'cloudflare-ipfs.com',
-        port: 443,
-        protocol: 'https',
-        timeout: 15000,
-      }),
-      create({
-        host: 'ipfs.infura.io',
+    try {
+      // Primary free public IPFS node
+      this.client = create({
+        host: '4everland.io',
         port: 5001,
         protocol: 'https',
         timeout: 15000,
-      }),
-      create({
-        host: 'gateway.pinata.cloud',
-        port: 443,
-        protocol: 'https',
-        timeout: 15000,
-      }),
-    ];
+      });
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize primary IPFS client:', error);
+      // Create a fallback client that will be replaced with a working one if available
+      this.client = {} as IPFSHTTPClient;
+    }
+    
+    // Fallback IPFS nodes (all free)
+    this.fallbackClients = [];
+    
+    try {
+      this.fallbackClients = [
+        create({
+          host: 'dweb.link',
+          port: 443,
+          protocol: 'https',
+          timeout: 15000,
+        }),
+        create({
+          host: 'cloudflare-ipfs.com',
+          port: 443,
+          protocol: 'https',
+          timeout: 15000,
+        }),
+        create({
+          host: 'ipfs.infura.io',
+          port: 5001,
+          protocol: 'https',
+          timeout: 15000,
+        }),
+        create({
+          host: 'gateway.pinata.cloud',
+          port: 443,
+          protocol: 'https',
+          timeout: 15000,
+        }),
+      ];
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize some IPFS clients:', error);
+    }
     
     this.gateway = 'https://gateway.pinata.cloud/ipfs/';
     this.fallbackGateways = [

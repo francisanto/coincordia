@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  concordia-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - NEXT_TELEMETRY_DISABLED=1
+      # Frontend variables
+      - NEXT_PUBLIC_CONTRACT_ADDRESS=${NEXT_PUBLIC_CONTRACT_ADDRESS:-0x31ff87832e0bc5eaee333d1db549829ba0376d45aa23a41e6b12bfe17c969595}
+      - NEXT_PUBLIC_NETWORK=${NEXT_PUBLIC_NETWORK:-opBNB Testnet}
+      - NEXT_PUBLIC_RPC_URL=${NEXT_PUBLIC_RPC_URL:-https://opbnb-testnet-rpc.bnbchain.org}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+      # Backend variables
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-0x31ff87832e0bc5eaee333d1db549829ba0376d45aa23a41e6b12bfe17c969595}
+      - RPC_URL=${RPC_URL:-https://opbnb-testnet-rpc.bnbchain.org}
+      # Optional variables
+      - ARWEAVE_KEY=${ARWEAVE_KEY:-{}}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    volumes:
+      - concordia-data:/app/data
+
+volumes:
+  concordia-data:

@@ -4,20 +4,30 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins, Copy, ExternalLink } from "lucide-react"
+import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins, Copy, ExternalLink, Trash2, AlertTriangle } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import ArweaveStorageInfo from "./ArweaveStorageInfo"
 import ArweaveStatusChecker from "./ArweaveStatusChecker"
+import { useState } from "react"
+import { useAccount } from "wagmi"
 import type { SavingsGroup } from "./group-dashboard"
 
 interface GroupDetailsModalProps {
   group: SavingsGroup | null
   isOpen: boolean
   onClose: () => void
+  onDeleteGroup?: (groupId: string) => Promise<void>
 }
 
-export function GroupDetailsModal({ group, isOpen, onClose }: GroupDetailsModalProps) {
+export function GroupDetailsModal({ group, isOpen, onClose, onDeleteGroup }: GroupDetailsModalProps) {
   if (!group) return null
+  
+  const { address } = useAccount()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Check if current user is the group creator
+  const isCreator = address && group.creator && address.toLowerCase() === group.creator.toLowerCase()
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -42,6 +52,25 @@ export function GroupDetailsModal({ group, isOpen, onClose }: GroupDetailsModalP
         return "Payment missed"
       default:
         return "Unknown"
+    }
+  }
+  
+  const handleDeleteGroup = async () => {
+    if (!group.id || !onDeleteGroup) return
+    
+    try {
+      setIsDeleting(true)
+      await onDeleteGroup(group.id)
+      setIsDeleting(false)
+      onClose()
+    } catch (error) {
+      console.error("Error deleting group:", error)
+      setIsDeleting(false)
+      toast({
+        title: "Error",
+        description: "Failed to delete group. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -295,6 +324,61 @@ export function GroupDetailsModal({ group, isOpen, onClose }: GroupDetailsModalP
             </div>
           </div>
         </div>
+        
+        {/* Delete Group Button (only shown to creator) */}
+        {isCreator && onDeleteGroup && (
+          <div className="mt-6 border-t border-concordia-light-purple/20 pt-4">
+            {!showDeleteConfirm ? (
+              <Button
+                variant="destructive"
+                className="w-full bg-red-600/80 hover:bg-red-700 text-white"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Group
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-white">
+                      <div className="font-semibold mb-1">Warning: This action cannot be undone</div>
+                      <div className="text-white/80">
+                        Deleting this group will remove it from local storage and mark it as deleted in decentralized storage.
+                        All members will lose access to this group.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-concordia-light-purple/50 text-concordia-light-purple hover:bg-concordia-light-purple/10 bg-transparent"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={handleDeleteGroup}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <span className="animate-pulse">Deleting...</span>
+                      </>
+                    ) : (
+                      "Confirm Delete"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

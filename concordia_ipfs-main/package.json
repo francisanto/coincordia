@@ -8,7 +8,8 @@
     "start": "cd concordia-main && npm run start",
     "lint": "cd concordia-main && npm run lint",
     "install:all": "npm install && cd concordia-main && npm install",
-    "clean": "rm -rf node_modules concordia-main/node_modules && npm run install:all"
+    "clean": "rm -rf node_modules concordia-main/node_modules && npm run install:all",
+    "test:arweave": "node concordia-main/scripts/test-arweave.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
