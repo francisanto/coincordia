@@ -1,0 +1,448 @@
+{
+  "network": "opBNB Testnet",
+  "contractAddress": "0x58ae7520F81DC3464574960B792D43A82BF0C3f1",
+  "deployer": "0xdA13e8F82C83d14E7aa639354054B7f914cA0998",
+  "transactionHash": "0x31ff87832e0bc5eaee333d1db549829ba0376d45aa23a41e6b12bfe17c969595",
+  "blockNumber": null,
+  "gasUsed": "2316989",
+  "deploymentDate": "2025-07-20T03:01:21.504Z",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "name": "_description",
+          "type": "string"
+        },
+        {
+          "name": "_goalAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "_duration",
+          "type": "uint256"
+        },
+        {
+          "name": "_withdrawalDate",
+          "type": "uint256"
+        },
+        {
+          "name": "_dueDay",
+          "type": "uint8"
+        },
+        {
+          "name": "_greenfieldObjectId",
+          "type": "string"
+        },
+        {
+          "name": "_greenfieldMetadataHash",
+          "type": "string"
+        }
+      ],
+      "name": "createGroup",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        },
+        {
+          "name": "nickname",
+          "type": "string"
+        }
+      ],
+      "name": "joinGroup",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "contribute",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "voteForWithdrawal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "emergencyWithdrawal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        },
+        {
+          "name": "newObjectId",
+          "type": "string"
+        },
+        {
+          "name": "newMetadataHash",
+          "type": "string"
+        }
+      ],
+      "name": "updateGreenfieldObject",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        },
+        {
+          "name": "metadataHash",
+          "type": "string"
+        }
+      ],
+      "name": "updateGroupMetadata",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getGroupDetails",
+      "outputs": [
+        {
+          "components": [
+            {
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "name": "goalAmount",
+              "type": "uint256"
+            },
+            {
+              "name": "dueDay",
+              "type": "uint256"
+            },
+            {
+              "name": "duration",
+              "type": "uint256"
+            },
+            {
+              "name": "withdrawalDate",
+              "type": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address"
+            },
+            {
+              "name": "isActive",
+              "type": "bool"
+            },
+            {
+              "name": "greenfieldObjectId",
+              "type": "string"
+            },
+            {
+              "name": "greenfieldMetadataHash",
+              "type": "string"
+            },
+            {
+              "name": "createdAt",
+              "type": "uint256"
+            },
+            {
+              "name": "totalContributions",
+              "type": "uint256"
+            },
+            {
+              "name": "memberCount",
+              "type": "uint256"
+            }
+          ],
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        },
+        {
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getMemberDetails",
+      "outputs": [
+        {
+          "components": [
+            {
+              "name": "isMember",
+              "type": "bool"
+            },
+            {
+              "name": "contribution",
+              "type": "uint256"
+            },
+            {
+              "name": "auraPoints",
+              "type": "uint256"
+            },
+            {
+              "name": "hasVoted",
+              "type": "bool"
+            },
+            {
+              "name": "joinedAt",
+              "type": "uint256"
+            },
+            {
+              "name": "nickname",
+              "type": "string"
+            }
+          ],
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getMembers",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getGroupContributions",
+      "outputs": [
+        {
+          "components": [
+            {
+              "name": "contributor",
+              "type": "address"
+            },
+            {
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "name": "timestamp",
+              "type": "uint256"
+            },
+            {
+              "name": "auraPoints",
+              "type": "uint256"
+            },
+            {
+              "name": "isEarly",
+              "type": "bool"
+            },
+            {
+              "name": "transactionHash",
+              "type": "string"
+            }
+          ],
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getGroupMetadataHash",
+      "outputs": [
+        {
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getGroupBalance",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "contractBalance",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalGroups",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256"
+        },
+        {
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "isGroupMember",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdrawStuckFunds",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "greenfieldIntegration": {
+    "enabled": true,
+    "bucketName": "concordia-data",
+    "endpoint": "https://gnfd-testnet-sp1.bnbchain.org",
+    "chainId": "5600"
+  }
+}
