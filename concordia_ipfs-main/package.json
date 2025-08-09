@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cd concordia-main && npm run dev",
-    "build": "cd concordia-main && npm run build",
-    "start": "cd concordia-main && npm start",
-    "install:all": "npm install && cd concordia-main && npm install"
+    "dev": "npm run install:all && cd concordia-main && npm run dev",
+    "build": "npm run install:all && cd concordia-main && npm run build",
+    "start": "cd concordia-main && npm run start",
+    "lint": "cd concordia-main && npm run lint",
+    "install:all": "npm install && cd concordia-main && npm install",
+    "clean": "rm -rf node_modules concordia-main/node_modules && npm run install:all"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

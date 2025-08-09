@@ -3,30 +3,34 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies first (better caching)
+# Copy package files
 COPY package*.json ./
 COPY concordia-main/package*.json ./concordia-main/
-RUN npm run install:all
 
-# Copy source code
+# Install dependencies
+RUN npm install
+RUN cd concordia-main && npm install
+
+# Copy source files
 COPY . .
 
-# Build application
-RUN npm run build
+# Build the application
+RUN cd concordia-main && npm run build
 
 # Production stage
 FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Copy built files and dependencies
+# Copy necessary files from builder
 COPY --from=builder /app/concordia-main/.next ./concordia-main/.next
 COPY --from=builder /app/concordia-main/public ./concordia-main/public
-COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/concordia-main/package*.json ./concordia-main/
+COPY --from=builder /app/package*.json ./
 
 # Install production dependencies
-RUN npm run install:all --production
+RUN npm install --production
+RUN cd concordia-main && npm install --production
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -34,4 +38,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"]
+CMD cd concordia-main && npm start
