@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Lock, Trophy, Target, ArrowRight, Shield, Coins, Wallet, ChevronDown, Plus } from "lucide-react"
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi"
 import { opBNBTestnet } from "wagmi/chains"
-import { GroupDashboard, type SavingsGroup } from "@/components/group-dashboard"
+import { GroupDashboard } from "@/components/group-dashboard"
+import { GroupMetadata } from "@/lib/types"
 import { SmartContractIntegration } from "@/components/smart-contract-integration"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { SparkleBackground } from "@/components/sparkle-background"
@@ -176,7 +177,7 @@ export default function HomePage() {
   const [duration, setDuration] = useState("")
   const [activeTab, setActiveTab] = useState("home")
   const { isConnected, address } = useAccount()
-  const [userGroups, setUserGroups] = useState<SavingsGroup[]>([])
+  const [userGroups, setUserGroups] = useState<GroupMetadata[]>([])
   const [isContributing, setIsContributing] = useState(false)
   const [withdrawalDate, setWithdrawalDate] = useState("")
   const [dueDay, setDueDay] = useState("")
@@ -268,27 +269,37 @@ export default function HomePage() {
 
         // Format and set local groups immediately for better UX
         if (userLocalGroups.length > 0) {
-          const formattedLocalGroups: SavingsGroup[] = userLocalGroups.map((group: any) => ({
-            id: group.id,
+          const formattedLocalGroups: GroupMetadata[] = userLocalGroups.map((group: any) => ({
+            groupId: group.id,
             name: group.name || "Unnamed Group",
-            goal: group.description || group.goal || "No description",
-            targetAmount: group.targetAmount || 0,
-            currentAmount: group.currentAmount || 0,
-            contributionAmount: group.contributionAmount || (group.targetAmount || 0) / 10,
-            duration: group.duration || "unknown",
-            endDate: group.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            description: group.description || group.goal || "No description",
+            goalAmount: group.targetAmount || 0,
+            creator: group.createdBy || group.creator || address || 'unknown',
+            duration: parseInt(group.duration) || 30,
+            withdrawalDate: group.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            dueDay: 1,
             members: group.members ? group.members.map((member: any) => ({
               address: member.address,
               nickname: member.nickname || "Member",
-              contributed: member.contributed || 0,
+              joinedAt: new Date().toISOString(),
+              role: 'member',
+              contribution: member.contributed || 0,
               auraPoints: member.auraPoints || 0,
+              hasVoted: false,
               status: member.status || "active"
             })) : [],
-            status: group.status || "active",
-            nextContribution: group.nextContribution || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-            createdBy: group.createdBy || group.creator || "",
+            contributions: [],
+            settings: {
+              dueDay: 1,
+              duration: group.duration?.toString() || '30',
+              withdrawalDate: group.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              isActive: group.isActive !== undefined ? group.isActive : true,
+              maxMembers: 10
+            },
+            blockchain: { network: 'unknown', contractAddress: '' },
             createdAt: group.createdAt || new Date().toISOString(),
-            isActive: group.isActive !== undefined ? group.isActive : true,
+            updatedAt: new Date().toISOString(),
+            version: '1.0',
           }));
 
           setUserGroups(formattedLocalGroups);
@@ -311,10 +322,10 @@ export default function HomePage() {
     loadGroups(address);
   }, [isConnected, address, toast]);
 
-  // Save groups using simple localStorage service
+  // Save groups using both localStorage and decentralized storage (IPFS and Arweave)
   const saveGroup = async (groupData: any) => {
     try {
-      console.log("💾 Saving group via data persistence service:", groupData);
+      console.log("💾 Saving group via data persistence services:", groupData);
 
       if (!address) {
         throw new Error("Wallet not connected");
@@ -322,20 +333,26 @@ export default function HomePage() {
 
       // Prepare the group data
       const preparedGroupData = {
-        id: groupData.id,
+        groupId: groupData.id,
         name: groupData.name,
         description: groupData.description,
         creator: address,
-        contributionAmount: groupData.targetAmount,
-        currentAmount: groupData.currentAmount,
-        targetAmount: groupData.targetAmount,
-        goal: groupData.description,
-        duration: groupData.duration,
-        endDate: groupData.withdrawalDate,
+        goalAmount: groupData.targetAmount,
+        duration: parseInt(groupData.duration) || 30,
         withdrawalDate: groupData.withdrawalDate,
-        isActive: true,
-        status: "active",
-        createdBy: address,
+        dueDay: 1,
+        contributions: [],
+        settings: {
+          dueDay: 1,
+          duration: groupData.duration?.toString() || '30',
+          withdrawalDate: groupData.withdrawalDate,
+          isActive: true,
+          maxMembers: 10
+        },
+        blockchain: { network: 'unknown', contractAddress: '' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: '1.0',
         members: [
           {
             address: address,
@@ -344,30 +361,73 @@ export default function HomePage() {
             auraPoints: 10,
             status: "active",
             role: "creator",
-            joinedAt: new Date().toISOString()
+            joinedAt: new Date().toISOString(),
+            hasVoted: false
           }
         ],
-        nextContribution: groupData.nextContribution,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        nextContribution: groupData.nextContribution
       };
 
-      // Use the data persistence service to save the group
-      const success = await persistentStorageService.saveGroup(preparedGroupData);
+      // Use the data persistence service to save the group locally
+      const localSuccess = await persistentStorageService.saveGroup(preparedGroupData);
+      
+      // Store in IPFS and Arweave via API
+      let ipfsHash = null;
+      let ipfsGatewayUrl = null;
+      let arweaveTransactionId = null;
+      
+      try {
+        // Call the API to store in IPFS and Arweave
+        const response = await fetch('/api/groups/store', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            groupId: preparedGroupData.groupId,
+            groupData: preparedGroupData,
+            userAddress: address
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log("✅ Group stored in decentralized storage:", result);
+          ipfsHash = result.ipfs?.ipfsHash;
+          ipfsGatewayUrl = result.ipfs?.gatewayUrl;
+          arweaveTransactionId = result.arweave?.transactionId;
+          
+          toast({
+            title: "🌐 Group Stored in Decentralized Storage",
+            description: "Your group data is now stored on IPFS and Arweave for permanent access.",
+            duration: 5000,
+          });
+        } else {
+          console.error("❌ Failed to store in decentralized storage:", result.error);
+          toast({
+            title: "⚠️ Decentralized Storage Warning",
+            description: "Group saved locally but failed to store on IPFS/Arweave. Some features may be limited.",
+            duration: 5000,
+          });
+        }
+      } catch (storageError) {
+        console.error("❌ Error storing in decentralized storage:", storageError);
+      }
 
-      if (success) {
+      if (localSuccess) {
         console.log("✅ Group saved to localStorage successfully");
 
         // Add the new group to the current list immediately
-        const newGroup: SavingsGroup = {
-          id: groupData.id,
+        const newGroup: GroupMetadata = {
+          groupId: groupData.id,
           name: groupData.name,
-          goal: groupData.description,
+          description: groupData.description,
           targetAmount: groupData.targetAmount,
           currentAmount: groupData.currentAmount,
           contributionAmount: groupData.contributionAmount,
           duration: groupData.duration,
-          endDate: groupData.withdrawalDate,
+          withdrawalDate: groupData.withdrawalDate,
           members: [
             {
               address: address,
@@ -381,6 +441,12 @@ export default function HomePage() {
           nextContribution: groupData.nextContribution,
           createdBy: address,
           createdAt: new Date().toISOString(),
+          // Add decentralized storage information
+          ipfsHash,
+          ipfsGatewayUrl,
+          arweaveTransactionId,
+          arweaveStatus: arweaveTransactionId ? 'pending' : undefined,
+          arweaveTimestamp: arweaveTransactionId ? new Date().toISOString() : undefined,
           isActive: true
         };
 
@@ -435,15 +501,15 @@ export default function HomePage() {
         });
 
         if (userSpecificGroups.length > 0) {
-          const formattedGroups: SavingsGroup[] = userSpecificGroups.map((group: any) => ({
-            id: group.id,
+          const formattedGroups: GroupMetadata[] = userSpecificGroups.map((group: any) => ({
+            groupId: group.id,
             name: group.name,
-            goal: group.description,
+            description: group.description,
             targetAmount: group.targetAmount || 0,
             currentAmount: group.currentAmount || 0,
             contributionAmount: group.contributionAmount || 0,
             duration: group.duration,
-            endDate: group.withdrawalDate || group.endDate,
+            withdrawalDate: group.withdrawalDate || group.endDate,
             members: group.members || [],
             status: group.settings?.isActive ? "active" : "completed",
             nextContribution: group.nextContribution || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -494,7 +560,7 @@ export default function HomePage() {
   }
 
   // Handle group creation and saving to localStorage
-  const handleGroupCreated = async (newGroup: SavingsGroup) => {
+  const handleGroupCreated = async (newGroup: GroupMetadata) => {
     try {
       console.log('💾 Saving group to localStorage:', newGroup)
 
@@ -521,15 +587,15 @@ export default function HomePage() {
             return isCreator || isMember;
           });
 
-          const formattedGroups: SavingsGroup[] = userSpecificGroups.map((group: any) => ({
-            id: group.id,
+          const formattedGroups: GroupMetadata[] = userSpecificGroups.map((group: any) => ({
+            groupId: group.id,
             name: group.name || "Unnamed Group",
-            goal: group.description || group.goal || "No description",
+            description: group.description || group.goal || "No description",
             targetAmount: group.targetAmount || 0,
             currentAmount: group.currentAmount || 0,
             contributionAmount: group.contributionAmount || 0,
             duration: group.duration,
-            endDate: group.endDate || "unknown",
+            withdrawalDate: group.endDate || "unknown",
             members: group.members || [],
             status: group.status || "active",
             nextContribution: group.nextContribution || "unknown",
@@ -716,17 +782,17 @@ export default function HomePage() {
           .split("T")[0]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
 
-    const newGroup: SavingsGroup = {
-      id: groupId, // Use groupId from contract creation
+    const newGroup: GroupMetadata = {
+      groupId: groupId, // Use groupId from contract creation
       name: teamName || "Unnamed Group",
       description: groupDescription || "No description provided.",
       creator: address || "",
       contributionAmount: parsedContributionAmount,
       currentAmount: parsedContributionAmount, // Initial amount in contract
       targetAmount: parsedContributionAmount * 10, // Assuming 10 members for target
-      goal: groupDescription || "No description provided.",
+      description: groupDescription || "No description provided.",
       duration: duration,
-      endDate: endDate,
+      withdrawalDate: endDate,
       withdrawalDate: contractData.withdrawalDate, // From contract
       dueDay: dueDay,
       isActive: true,
@@ -810,7 +876,7 @@ export default function HomePage() {
 
       // Simulate fetching group data
       const simulatedGroupData = {
-        id: `group_${inviteCode}`, // Example ID
+        groupId: `group_${inviteCode}`, // Example ID
         name: `Group ${inviteCode}`,
         description: "Joined via invite code",
         members: [{ address: address, nickname: "New Member", contributed: 0, auraPoints: 0, status: "active" }],
@@ -839,15 +905,15 @@ export default function HomePage() {
               return isCreator || isMember;
             });
 
-            const formattedGroups: SavingsGroup[] = userSpecificGroups.map((group: any) => ({
-              id: group.id,
+            const formattedGroups: GroupMetadata[] = userSpecificGroups.map((group: any) => ({
+              groupId: group.id,
               name: group.name || "Unnamed Group",
-              goal: group.description || group.goal || "No description",
+              description: group.description || group.goal || "No description",
               targetAmount: group.targetAmount || 0,
               currentAmount: group.currentAmount || 0,
               contributionAmount: group.contributionAmount || 0,
               duration: group.duration,
-              endDate: group.endDate || "unknown",
+              withdrawalDate: group.endDate || "unknown",
               members: group.members || [],
               status: group.status || "active",
               nextContribution: group.nextContribution || "unknown",

@@ -3,7 +3,11 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins, Copy, ExternalLink } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import ArweaveStorageInfo from "./ArweaveStorageInfo"
+import ArweaveStatusChecker from "./ArweaveStatusChecker"
 import type { SavingsGroup } from "./group-dashboard"
 
 interface GroupDetailsModalProps {
@@ -172,6 +176,66 @@ export function GroupDetailsModal({ group, isOpen, onClose }: GroupDetailsModalP
                 This is the unique identifier for your group on the blockchain.
               </p>
             </div>
+          </div>
+          
+          {/* Storage Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* IPFS Storage */}
+            <div className="bg-concordia-light-purple/10 rounded-lg p-4 border border-concordia-light-purple/20">
+              <h4 className="text-white font-semibold text-sm mb-3 flex items-center">
+                <Tag className="h-4 w-4 mr-2 text-concordia-light-purple" />
+                IPFS Storage
+              </h4>
+              {group.ipfsHash ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/70 text-xs">IPFS Hash:</span>
+                    <span className="text-white text-xs font-mono bg-concordia-dark-blue/50 px-2 py-1 rounded">
+                      {group.ipfsHash.substring(0, 6)}...{group.ipfsHash.substring(group.ipfsHash.length - 6)}
+                    </span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs h-8 mt-2" 
+                    onClick={() => group.ipfsGatewayUrl && window.open(group.ipfsGatewayUrl, '_blank')}
+                    disabled={!group.ipfsGatewayUrl}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    View on IPFS Gateway
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-white/60 text-xs">Not stored on IPFS yet</div>
+              )}
+            </div>
+            
+            {/* Arweave Storage */}
+            <ArweaveStorageInfo
+              transactionId={group.arweaveTransactionId}
+              status={group.arweaveStatus}
+              timestamp={group.arweaveTimestamp}
+              onViewTransaction={(txId) => window.open(`https://viewblock.io/arweave/tx/${txId}`, '_blank')}
+            />
+            
+            {/* Arweave Status Checker (only show if transaction is pending) */}
+            {group.arweaveTransactionId && group.arweaveStatus === 'pending' && (
+              <div className="col-span-2 mt-2 bg-concordia-dark-blue/30 p-2 rounded-md border border-concordia-light-purple/20">
+                <ArweaveStatusChecker
+                  groupId={group.id}
+                  transactionId={group.arweaveTransactionId}
+                  userAddress={group.members[0]?.address || ''}
+                  initialStatus={group.arweaveStatus}
+                  onStatusUpdate={(status) => {
+                    // In a real app, this would update the group's status in state/storage
+                    console.log(`Arweave status updated to: ${status}`);
+                    // Update the UI immediately
+                    group.arweaveStatus = status;
+                    group.arweaveTimestamp = new Date().toISOString();
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Payment Schedule */}

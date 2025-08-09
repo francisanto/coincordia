@@ -54,6 +54,24 @@ class ApiClient {
     return this.request(`/groups/${groupId}`)
   }
 
+  async retrieveGroup(options: { groupId?: string, ipfsHash?: string, arweaveId?: string, userAddress: string }) {
+    const params = new URLSearchParams()
+    if (options.groupId) params.append('groupId', options.groupId)
+    if (options.ipfsHash) params.append('ipfsHash', options.ipfsHash)
+    if (options.arweaveId) params.append('arweaveId', options.arweaveId)
+    if (options.userAddress) params.append('userAddress', options.userAddress)
+    
+    return this.request(`/groups/retrieve?${params.toString()}`)
+  }
+  
+  async checkArweaveStatus(transactionId: string, userAddress: string) {
+    const params = new URLSearchParams()
+    params.append('transactionId', transactionId)
+    params.append('userAddress', userAddress)
+    
+    return this.request(`/groups/arweave-status?${params.toString()}`)
+  }
+
   async updateGroup(groupId: string, updateData: any) {
     return this.request(`/groups/${groupId}`, {
       method: "PUT",

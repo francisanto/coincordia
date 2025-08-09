@@ -11,6 +11,32 @@ import { GroupOptions } from './group-options';
 import { persistentStorageService } from '@/lib/persistent-storage';
 import { GroupMetadata } from '@/lib/types';
 
+export interface SavingsGroup extends GroupMetadata {
+  id: string;
+  name: string;
+  goal?: string;
+  targetAmount: number;
+  currentAmount: number;
+  contributionAmount: number;
+  duration: string;
+  endDate: string;
+  members: {
+    address: string;
+    nickname: string;
+    contributed: number;
+    status: string;
+  }[];
+  nextContribution: string;
+  inviteCode?: string;
+  status: string;
+  isActive: boolean;
+  ipfsHash?: string;
+  ipfsGatewayUrl?: string;
+  arweaveTransactionId?: string;
+  arweaveStatus?: 'pending' | 'confirmed' | 'failed';
+  arweaveTimestamp?: string;
+}
+
 interface GroupDashboardProps {
   groups: GroupMetadata[];
   onGroupsChange: () => void;
