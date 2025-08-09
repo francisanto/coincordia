@@ -81,6 +81,7 @@ export class IPFSService {
   private gateway: string;
   private fallbackGateways: string[];
   private adminAddress: string;
+  private inviteCodes: Map<string, { groupId: string, createdBy: string, timestamp: number }> = new Map();
 
   constructor() {
     // Primary free public IPFS node
@@ -556,6 +557,60 @@ export class IPFSService {
    */
   getAllGatewayUrls(ipfsHash: string): string[] {
     return [this.gateway, ...this.fallbackGateways].map(gateway => `${gateway}${ipfsHash}`);
+  }
+
+  /**
+   * Store invite code in IPFS
+   */
+  async storeInviteCode(groupId: string, code: string, createdBy: string): Promise<{ success: boolean; ipfsHash?: string; error?: string }> {
+    try {
+      console.log('📤 Storing invite code in IPFS:', code, 'for group:', groupId);
+      
+      // Store in memory map (in a real implementation, this would be stored in IPFS or a database)
+      this.inviteCodes.set(code, {
+        groupId,
+        createdBy,
+        timestamp: Date.now()
+      });
+      
+      // In a real implementation, you would store this in IPFS
+      // For now, we'll simulate a successful store
+      
+      return { success: true, ipfsHash: `invite_${code}_${Date.now()}` };
+    } catch (error) {
+      console.error('❌ Error storing invite code in IPFS:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+  
+  /**
+   * Get invite code from IPFS
+   */
+  async getInviteCode(code: string): Promise<{ success: boolean; groupId?: string; error?: string }> {
+    try {
+      console.log('📥 Getting invite code from IPFS:', code);
+      
+      // Get from memory map (in a real implementation, this would be fetched from IPFS or a database)
+      const inviteData = this.inviteCodes.get(code);
+      
+      if (!inviteData) {
+        return { success: false, error: 'Invite code not found' };
+      }
+      
+      // Check if code is expired (24 hours)
+      const now = Date.now();
+      const expiryTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (now - inviteData.timestamp > expiryTime) {
+        this.inviteCodes.delete(code); // Clean up expired code
+        return { success: false, error: 'Invite code has expired' };
+      }
+      
+      return { success: true, groupId: inviteData.groupId };
+    } catch (error) {
+      console.error('❌ Error getting invite code from IPFS:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 }
 

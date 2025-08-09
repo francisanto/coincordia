@@ -1,0 +1,42 @@
+
+> concordia@0.1.0 build
+> next build
+
+unhandledRejection Error: Cannot find module '../utils/launch-editor'
+Require stack:
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\client\components\react-dev-overlay\server\middleware-webpack.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\server\patch-error-inspect.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\server\node-environment-extensions\error-inspect.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\server\node-environment.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\build\utils.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\build\swc\options.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\build\swc\index.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\build\analysis\parse-module.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\build\analysis\get-page-static-info.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\build\index.js
+- C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\cli\next-build.js
+    at Function.<anonymous> (node:internal/modules/cjs/loader:1401:15)
+    at C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\server\require-hook.js:55:36
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1487:12)
+    at mod.require (C:\Users\franc\Downloads\node_modules\.pnpm\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:135:16) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\client\\components\\react-dev-overlay\\server\\middleware-webpack.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\server\\patch-error-inspect.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\server\\node-environment-extensions\\error-inspect.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\server\\node-environment.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\build\\utils.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\build\\swc\\options.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\build\\swc\\index.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\build\\analysis\\parse-module.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\build\\analysis\\get-page-static-info.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\build\\index.js',
+    'C:\\Users\\franc\\Downloads\\node_modules\\.pnpm\\next@15.2.4_react-dom@19.1.0_react@19.1.0__react@19.1.0\\node_modules\\next\\dist\\cli\\next-build.js'
+  ]
+}

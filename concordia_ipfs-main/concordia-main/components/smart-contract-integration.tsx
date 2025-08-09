@@ -6,7 +6,7 @@ import { parseEther } from "viem"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, CheckCircle, AlertCircle, ExternalLink, Database, Shield } from "lucide-react"
-import { ipfsService, type GroupMetadata } from "@/lib/ipfs-service"
+import { arweaveService, type GroupMetadata } from "@/lib/arweave-service"
 
 // Updated Concordia Smart Contract ABI - matches your actual contract
 export const CONCORDIA_CONTRACT_ABI = [
@@ -18,8 +18,7 @@ export const CONCORDIA_CONTRACT_ABI = [
       { name: "_duration", type: "uint256" },
       { name: "_withdrawalDate", type: "uint256" },
       { name: "_dueDay", type: "uint8" },
-      { name: "_greenfieldObjectId", type: "string" },
-      { name: "_greenfieldMetadataHash", type: "string" },
+      { name: "_arweaveId", type: "string" },
     ],
     name: "createGroup",
     outputs: [],
@@ -261,8 +260,6 @@ export function SmartContractIntegration({
   const { address } = useAccount()
   const [isCreating, setIsCreating] = useState(false)
   const [activeTxType, setActiveTxType] = useState<"create" | "delete" | null>(null)
-  const [greenfieldObjectId, setGreenfieldObjectId] = useState<string>("")
-  const [greenfieldMetadataHash, setGreenfieldMetadataHash] = useState<string>("")
   const [storageStatus, setStorageStatus] = useState<string>("")
 
   const { writeContract, data: hash, error, isPending } = useWriteContract()
@@ -319,12 +316,11 @@ export function SmartContractIntegration({
               ? 180 * 24 * 60 * 60
               : 365 * 24 * 60 * 60
 
-      // Generate temporary IPFS object ID
+      // Generate temporary object ID
       const tempObjectId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      setGreenfieldObjectId(tempObjectId)
 
       // Create comprehensive group metadata
-      const groupMetadata = ipfsService.createGroupMetadata({
+      const groupMetadata = arweaveService.createGroupMetadata({
         groupId: tempObjectId,
         name: teamName,
         description: groupDescription,
@@ -338,39 +334,35 @@ export function SmartContractIntegration({
         blockNumber: "",
         gasUsed: "",
         objectId: tempObjectId,
-        objectName: `groups/group_${tempObjectId}.json`,
-        bucketName: "concordia-data",
-        endpoint: "https://gnfd-testnet-sp1.bnbchain.org",
       })
 
-      setStorageStatus("Storing metadata on IPFS...")
+      setStorageStatus("Storing metadata on Arweave...")
 
-      // Store metadata on IPFS first (with timeout and fallback)
-      let storeResult: { success: boolean; ipfsHash?: string; error?: string } = { success: false }
+      // Store metadata on Arweave first (with timeout and fallback)
+      let storeResult: { success: boolean; transactionId?: string; error?: string } = { success: false }
       try {
         storeResult = await Promise.race([
-          ipfsService.storeGroupData(tempObjectId, groupMetadata, address!),
-          new Promise<{ success: boolean; ipfsHash?: string; error?: string }>((_, reject) => 
-            setTimeout(() => reject(new Error("IPFS timeout")), 15000)
+          arweaveService.storeGroupData(tempObjectId, groupMetadata, address!),
+          new Promise<{ success: boolean; transactionId?: string; error?: string }>((_, reject) => 
+            setTimeout(() => reject(new Error("Arweave timeout")), 15000)
           )
         ])
       } catch (error) {
-        console.warn("IPFS storage failed, proceeding with fallback:", error)
-        // Use fallback hash if IPFS fails
-        storeResult = { success: true, ipfsHash: tempObjectId }
+        console.warn("Arweave storage failed, proceeding with fallback:", error)
+        // Use fallback hash if Arweave fails
+        storeResult = { success: true, transactionId: tempObjectId }
       }
 
       if (!storeResult.success) {
-        console.warn("IPFS storage failed, using fallback")
-        storeResult = { success: true, ipfsHash: tempObjectId }
+        console.warn("Arweave storage failed, using fallback")
+        storeResult = { success: true, transactionId: tempObjectId }
       }
 
-      const ipfsHash = storeResult.ipfsHash || tempObjectId
-      setGreenfieldMetadataHash(ipfsHash)
+      const arweaveId = storeResult.transactionId || tempObjectId
 
       setStorageStatus("Creating smart contract...")
 
-      // Call smart contract with IPFS data
+      // Call smart contract with Arweave data
       console.log("Calling smart contract with args:", {
         teamName,
         groupDescription,
@@ -378,8 +370,8 @@ export function SmartContractIntegration({
         durationSeconds,
         finalDate: Math.floor(finalDate),
         dueDay: Number(dueDay ? Number.parseInt(dueDay) : 1),
-        ipfsHash: ipfsHash,
-        metadataHash: ipfsHash
+        arweaveId: arweaveId,
+        metadataHash: arweaveId
       })
 
       // For testing without deployed contract, simulate the transaction
@@ -418,8 +410,7 @@ export function SmartContractIntegration({
       console.log("- Duration:", durationSeconds)
       console.log("- Withdrawal Date:", Math.floor(finalDate))
       console.log("- Due Day:", Number(dueDay ? Number.parseInt(dueDay) : 1))
-      console.log("- Object ID:", storeResult.objectId || tempObjectId)
-      console.log("- Metadata Hash:", metadataHash)
+      console.log("- Arweave ID:", arweaveId)
       
       writeContract({
         address: CONCORDIA_CONTRACT_ADDRESS as `0x${string}`,
@@ -432,8 +423,7 @@ export function SmartContractIntegration({
           BigInt(durationSeconds),
           BigInt(Math.floor(finalDate)),
           Number(dueDay ? Number.parseInt(dueDay) : 1),
-          ipfsHash,
-          ipfsHash,
+          arweaveId,
         ],
         value: parsedAmount, // Initial contribution
       })
@@ -484,20 +474,15 @@ export function SmartContractIntegration({
             updatedAt: new Date().toISOString(),
           }
 
-                // Update metadata in Greenfield (with timeout)
+          // Update metadata in Arweave
       try {
-        const updateResult = await Promise.race([
-          greenfieldService.updateGroupMetadata(groupId, updatedMetadata),
-          new Promise<{ success: boolean; metadataHash?: string; error?: string }>((_, reject) => 
-            setTimeout(() => reject(new Error("Update timeout")), 5000)
-          )
-        ])
-
+        const updateResult = await arweaveService.storeGroupData(tempObjectId, updatedMetadata, address!)
+        
         if (!updateResult.success) {
-          console.warn("Failed to update metadata:", updateResult.error)
-          }
+          console.warn("Failed to update metadata in Arweave:", updateResult.error)
+        }
       } catch (error) {
-        console.warn("Metadata update failed, continuing:", error)
+        console.warn("Arweave metadata update failed, continuing:", error)
       }
 
           setStorageStatus("Group created successfully!")
@@ -512,8 +497,6 @@ export function SmartContractIntegration({
             targetAmount: Number.parseFloat(contributionAmount) * 10, // Assuming 10x target
             withdrawalDate: withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             isActive: true,
-            greenfieldObjectId: greenfieldObjectId,
-            greenfieldMetadataHash: greenfieldMetadataHash,
           }
 
           onSuccess?.(groupId, hash, contractData)
@@ -531,8 +514,6 @@ export function SmartContractIntegration({
             withdrawalDate:
               withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             isActive: true,
-            greenfieldObjectId: greenfieldObjectId,
-            greenfieldMetadataHash: greenfieldMetadataHash,
           }
           onSuccess?.(hash, hash, basicContractData)
           setCallbackCalled(true)
@@ -555,9 +536,8 @@ export function SmartContractIntegration({
     withdrawalDate,
     dueDay,
     duration,
-    greenfieldObjectId,
-    greenfieldMetadataHash,
     receipt,
+    tempObjectId
   ])
 
   return (
@@ -591,7 +571,7 @@ export function SmartContractIntegration({
                 <CheckCircle className="h-5 w-5 text-green-400" />
                 <div className="flex-1">
                   <div className="text-white font-semibold">Group Created Successfully!</div>
-                  <div className="text-white/70 text-sm">Data stored on blockchain and BNB Greenfield</div>
+                  <div className="text-white/70 text-sm">Data stored on blockchain and Arweave</div>
                 </div>
                 {hash && (
                   <Button
@@ -655,17 +635,17 @@ export function SmartContractIntegration({
         )}
       </Button>
 
-      {/* IPFS Integration Info */}
+      {/* Arweave Integration Info */}
       <Card className="bg-concordia-light-purple/10 border-concordia-light-purple/30">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2 mb-3">
             <Database className="h-4 w-4 text-concordia-pink" />
-            <span className="text-white font-semibold text-sm">IPFS Decentralized Storage</span>
+            <span className="text-white font-semibold text-sm">Arweave Permanent Storage</span>
           </div>
           <div className="space-y-2 text-xs text-white/70">
             <div className="flex items-center space-x-2">
               <Shield className="h-3 w-3" />
-              <span>Group metadata stored on IPFS network</span>
+              <span>Group metadata stored permanently on Arweave network</span>
             </div>
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-3 w-3" />
@@ -673,11 +653,11 @@ export function SmartContractIntegration({
             </div>
             <div className="flex items-center space-x-2">
               <ExternalLink className="h-3 w-3" />
-              <span>Smart contract linked to IPFS hashes</span>
+              <span>Smart contract linked to Arweave transaction IDs</span>
             </div>
             <div className="flex items-center space-x-2">
               <Database className="h-3 w-3" />
-              <span>Auto-deletion on group completion</span>
+              <span>Permanent storage for group data</span>
             </div>
           </div>
         </CardContent>

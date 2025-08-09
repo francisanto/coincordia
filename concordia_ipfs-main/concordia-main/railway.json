@@ -15,7 +15,12 @@
     "production": {
       "variables": {
         "NODE_ENV": "production",
-        "NEXT_PUBLIC_API_URL": "${{RAILWAY_PUBLIC_DOMAIN}}/api"
+        "NEXT_PUBLIC_API_URL": "${{RAILWAY_PUBLIC_DOMAIN}}/api",
+        "NEXT_PUBLIC_CONTRACT_ADDRESS": "${{CONTRACT_ADDRESS}}",
+        "NEXT_PUBLIC_NETWORK": "${{NETWORK}}",
+        "NEXT_PUBLIC_RPC_URL": "${{RPC_URL}}",
+        "ARWEAVE_KEY": "${{ARWEAVE_KEY}}",
+        "RPC_URL": "${{RPC_URL}}"
       }
     }
   }

@@ -10,8 +10,11 @@ export async function DELETE(
     const { groupId } = params;
     console.log('🗑️ Deleting group data:', groupId);
 
+    // Extract user address from request or use admin address
+    const userAddress = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'; // Admin address as default
+    
     // Delete group data using existing persistence service
-    const success = await dataPersistenceService.deleteGroup(groupId);
+    const success = await dataPersistenceService.deleteGroup(groupId, userAddress);
 
     if (!success) {
       return NextResponse.json(

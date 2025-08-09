@@ -23,11 +23,13 @@ export async function PUT(
 
     // Update group with new data
     const updatedGroup = { ...currentGroup, ...updates };
-    const success = await dataPersistenceService.saveGroup(updatedGroup);
+    // Use admin address for saving
+    const userAddress = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998';
+    const result = await dataPersistenceService.saveGroup(updatedGroup, userAddress);
 
-    if (!success) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Failed to update group metadata' },
+        { error: result.error || 'Failed to update group metadata' },
         { status: 500 }
       );
     }

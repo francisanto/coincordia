@@ -1,5 +1,5 @@
 
-import { ipfsService, GroupMetadata } from './ipfs-service'
+import { arweaveService, GroupMetadata } from './arweave-service'
 
 const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 

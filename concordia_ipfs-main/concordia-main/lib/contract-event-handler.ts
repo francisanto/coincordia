@@ -1,7 +1,7 @@
 
 import { useWatchContractEvent } from 'wagmi'
 import { CONCORDIA_CONTRACT_ABI } from '@/components/smart-contract-integration'
-import { ipfsService } from './ipfs-service'
+import { arweaveService } from './arweave-service'
 
 const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x76a9C6d5EE759b0b5Ef4c7D9963523d247cBeF88") as `0x${string}`;
 

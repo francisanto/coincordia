@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server'
+import { arweaveService } from '@/lib/arweave-service'
 import { ipfsService } from '@/lib/ipfs-service'
 
 export async function POST(request: Request) {
@@ -24,25 +25,38 @@ export async function POST(request: Request) {
     }
 
     // Store in IPFS
-    const result = await ipfsService.storeGroupData(
+    const ipfsResult = await ipfsService.storeGroupData(
       groupData.groupId,
       groupData,
       userAddress
     )
 
-    if (!result.success) {
+    if (!ipfsResult.success) {
       return NextResponse.json(
-        { success: false, error: result.error || 'Failed to store group data' },
+        { success: false, error: ipfsResult.error || 'Failed to store group data in IPFS' },
         { status: 500 }
       )
     }
+    
+    // Store in Arweave
+    const arweaveResult = await arweaveService.storeGroupData(
+      groupData.groupId,
+      groupData,
+      userAddress
+    )
 
     return NextResponse.json({
       success: true,
       data: {
-        ipfsHash: result.ipfsHash,
-        gatewayUrl: ipfsService.getGatewayUrl(result.ipfsHash!),
-        message: 'Group data stored successfully in IPFS'
+        ipfs: {
+          ipfsHash: ipfsResult.ipfsHash,
+          gatewayUrl: ipfsService.getGatewayUrl(ipfsResult.ipfsHash!)
+        },
+        arweave: {
+          transactionId: arweaveResult.transactionId,
+          success: arweaveResult.success
+        },
+        message: 'Group data stored successfully in IPFS and Arweave'
       }
     })
 

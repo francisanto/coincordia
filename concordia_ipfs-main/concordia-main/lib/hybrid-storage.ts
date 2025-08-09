@@ -1,6 +1,6 @@
 // Wallet-based storage service with IPFS backend
 import { walletStorageService } from './wallet-storage-service'
-import { GroupMetadata } from './ipfs-service'
+import { GroupMetadata } from './arweave-service'
 
 const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 

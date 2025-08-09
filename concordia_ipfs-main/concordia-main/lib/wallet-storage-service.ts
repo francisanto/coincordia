@@ -1,18 +1,18 @@
 
-import { ipfsService, GroupMetadata } from './ipfs-service'
+import { arweaveService, GroupMetadata } from './arweave-service'
 
 const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 interface WalletStorageIndex {
   [walletAddress: string]: {
-    groups: string[]; // Array of IPFS hashes
+    groups: string[]; // Array of Arweave transaction IDs
     lastUpdated: string;
   }
 }
 
 interface GroupIndex {
   [groupId: string]: {
-    ipfsHash: string;
+    transactionId: string;
     creator: string;
     members: string[];
     name: string;
@@ -21,22 +21,22 @@ interface GroupIndex {
 }
 
 class WalletStorageService {
-  private storageIndexHash: string | null = null;
-  private groupIndexHash: string | null = null;
+  private storageIndexTxId: string | null = null;
+  private groupIndexTxId: string | null = null;
 
   /**
-   * Initialize storage indexes from IPFS
+   * Initialize storage indexes from Arweave
    */
   async initializeStorage(): Promise<void> {
     try {
       console.log('🔄 Initializing wallet storage service...');
       
-      // Try to load existing indexes from a known IPFS hash
+      // Try to load existing indexes from a known Arweave transaction ID
       // In production, this could be stored in a simple config or ENV var
-      const knownIndexHash = process.env.NEXT_PUBLIC_STORAGE_INDEX_HASH;
+      const knownIndexTxId = process.env.NEXT_PUBLIC_STORAGE_INDEX_TXID;
       
-      if (knownIndexHash) {
-        this.storageIndexHash = knownIndexHash;
+      if (knownIndexTxId) {
+        this.storageIndexTxId = knownIndexTxId;
         console.log('✅ Storage service initialized with existing index');
       } else {
         // Create new indexes
@@ -55,7 +55,7 @@ class WalletStorageService {
    */
   async saveGroup(groupData: GroupMetadata, userAddress: string): Promise<{
     success: boolean;
-    ipfsHash?: string;
+    transactionId?: string;
     error?: string;
   }> {
     try {
@@ -66,8 +66,8 @@ class WalletStorageService {
         throw new Error('Access denied: You cannot modify this group');
       }
 
-      // Store group data in IPFS
-      const storeResult = await ipfsService.storeGroupData(
+      // Store group data in Arweave
+      const storeResult = await arweaveService.storeGroupData(
         groupData.groupId,
         groupData,
         userAddress
@@ -78,12 +78,12 @@ class WalletStorageService {
       }
 
       // Update indexes
-      await this.updateIndexes(groupData, storeResult.ipfsHash!, userAddress);
+      await this.updateIndexes(groupData, storeResult.transactionId!, userAddress);
 
-      console.log('✅ Group saved successfully:', storeResult.ipfsHash);
+      console.log('✅ Group saved successfully:', storeResult.transactionId);
       return {
         success: true,
-        ipfsHash: storeResult.ipfsHash
+        transactionId: storeResult.transactionId
       };
 
     } catch (error) {
@@ -128,7 +128,7 @@ class WalletStorageService {
             group.members.some(member => member.toLowerCase() === userAddress.toLowerCase())) {
           
           try {
-            const groupData = await this.loadGroupData(group.ipfsHash);
+            const groupData = await this.loadGroupData(group.transactionId);
             if (groupData) {
               userGroups.push(groupData);
             }
@@ -170,7 +170,7 @@ class WalletStorageService {
         return { success: false, error: 'Access denied' };
       }
 
-      const groupData = await this.loadGroupData(groupInfo.ipfsHash);
+      const groupData = await this.loadGroupData(groupInfo.transactionId);
       if (!groupData) {
         return { success: false, error: 'Failed to load group data' };
       }
@@ -335,32 +335,32 @@ class WalletStorageService {
     const emptyWalletIndex: WalletStorageIndex = {};
     const emptyGroupIndex: GroupIndex = {};
 
-    // Store empty indexes in IPFS
-    const walletIndexResult = await ipfsService.storeGroupData(
+    // Store empty indexes in Arweave
+    const walletIndexResult = await arweaveService.storeGroupData(
       'wallet-index',
       { data: emptyWalletIndex, type: 'wallet-index' } as any,
       ADMIN_WALLET
     );
 
-    const groupIndexResult = await ipfsService.storeGroupData(
+    const groupIndexResult = await arweaveService.storeGroupData(
       'group-index', 
       { data: emptyGroupIndex, type: 'group-index' } as any,
       ADMIN_WALLET
     );
 
     if (walletIndexResult.success && groupIndexResult.success) {
-      this.storageIndexHash = walletIndexResult.ipfsHash!;
-      this.groupIndexHash = groupIndexResult.ipfsHash!;
+      this.storageIndexTxId = walletIndexResult.transactionId!;
+      this.groupIndexTxId = groupIndexResult.transactionId!;
     }
   }
 
   private async getWalletIndex(): Promise<WalletStorageIndex> {
-    if (!this.storageIndexHash) {
+    if (!this.storageIndexTxId) {
       return {};
     }
 
     try {
-      const result = await ipfsService.getGroupData(this.storageIndexHash, ADMIN_WALLET);
+      const result = await arweaveService.getGroupData(this.storageIndexTxId, ADMIN_WALLET);
       if (result.success && result.data) {
         return (result.data as any).data || {};
       }
@@ -372,12 +372,12 @@ class WalletStorageService {
   }
 
   private async getGroupIndex(): Promise<GroupIndex> {
-    if (!this.groupIndexHash) {
+    if (!this.groupIndexTxId) {
       return {};
     }
 
     try {
-      const result = await ipfsService.getGroupData(this.groupIndexHash, ADMIN_WALLET);
+      const result = await arweaveService.getGroupData(this.groupIndexTxId, ADMIN_WALLET);
       if (result.success && result.data) {
         return (result.data as any).data || {};
       }
@@ -390,13 +390,13 @@ class WalletStorageService {
 
   private async updateIndexes(
     groupData: GroupMetadata, 
-    ipfsHash: string, 
+    transactionId: string, 
     userAddress: string
   ): Promise<void> {
     // Update group index
     const groupIndex = await this.getGroupIndex();
     groupIndex[groupData.groupId] = {
-      ipfsHash,
+      transactionId,
       creator: groupData.creator,
       members: groupData.members.map(m => m.address),
       name: groupData.name,
@@ -424,35 +424,35 @@ class WalletStorageService {
 
   private async storeIndexes(walletIndex: WalletStorageIndex, groupIndex: GroupIndex): Promise<void> {
     try {
-      const walletIndexResult = await ipfsService.storeGroupData(
+      const walletIndexResult = await arweaveService.storeGroupData(
         'wallet-index',
         { data: walletIndex, type: 'wallet-index' } as any,
         ADMIN_WALLET
       );
 
-      const groupIndexResult = await ipfsService.storeGroupData(
+      const groupIndexResult = await arweaveService.storeGroupData(
         'group-index',
         { data: groupIndex, type: 'group-index' } as any,
         ADMIN_WALLET
       );
 
       if (walletIndexResult.success && groupIndexResult.success) {
-        this.storageIndexHash = walletIndexResult.ipfsHash!;
-        this.groupIndexHash = groupIndexResult.ipfsHash!;
+        this.storageIndexTxId = walletIndexResult.transactionId!;
+        this.groupIndexTxId = groupIndexResult.transactionId!;
         
-        // Log the new index hashes for reference
+        // Log the new index transaction IDs for reference
         console.log('📝 Updated storage indexes:');
-        console.log('Wallet Index:', this.storageIndexHash);
-        console.log('Group Index:', this.groupIndexHash);
+        console.log('Wallet Index:', this.storageIndexTxId);
+        console.log('Group Index:', this.groupIndexTxId);
       }
     } catch (error) {
       console.error('❌ Failed to store indexes:', error);
     }
   }
 
-  private async loadGroupData(ipfsHash: string): Promise<GroupMetadata | null> {
+  private async loadGroupData(transactionId: string): Promise<GroupMetadata | null> {
     try {
-      const result = await ipfsService.getGroupData(ipfsHash, ADMIN_WALLET);
+      const result = await arweaveService.getGroupData(transactionId, ADMIN_WALLET);
       return result.success ? result.data || null : null;
     } catch (error) {
       console.error('❌ Failed to load group data:', error);
@@ -461,9 +461,9 @@ class WalletStorageService {
   }
 
   private async storeGroupCode(code: string, groupId: string): Promise<void> {
-    // Store in a simple code-to-groupId mapping in IPFS
+    // Store in a simple code-to-groupId mapping in Arweave
     const codeMapping = { [code]: groupId };
-    await ipfsService.storeGroupData(
+    await arweaveService.storeGroupData(
       `group-code-${code}`,
       { data: codeMapping, type: 'group-code' } as any,
       ADMIN_WALLET
@@ -472,7 +472,7 @@ class WalletStorageService {
 
   private async findGroupByCode(code: string): Promise<string | null> {
     try {
-      const result = await ipfsService.getGroupData(`group-code-${code}`, ADMIN_WALLET);
+      const result = await arweaveService.getGroupData(`group-code-${code}`, ADMIN_WALLET);
       if (result.success && result.data) {
         const mapping = (result.data as any).data;
         return mapping[code] || null;

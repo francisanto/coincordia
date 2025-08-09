@@ -1,6 +1,6 @@
 
 import { GroupMetadata, MemberData, ContributionData } from './types'
-import { ipfsOnlyStorageService } from './hybrid-storage'
+import { arweaveOnlyStorageService } from './arweave-hybrid-storage'
 
 export interface StorageResult<T = any> {
   success: boolean
@@ -13,13 +13,13 @@ class DataPersistenceService {
   private readonly ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
   /**
-   * Save group data to IPFS
+   * Save group data to Arweave
    */
   async saveGroup(groupData: GroupMetadata, userAddress: string): Promise<StorageResult<string>> {
     try {
-      console.log('💾 Saving group to IPFS...', groupData.groupId)
+      console.log('💾 Saving group to Arweave...', groupData.groupId)
       
-      const result = await ipfsOnlyStorageService.storeGroupData(groupData, userAddress)
+      const result = await arweaveOnlyStorageService.storeGroupData(groupData, userAddress)
       
       if (!result.success) {
         return {
@@ -28,7 +28,7 @@ class DataPersistenceService {
         }
       }
 
-      console.log('✅ Group saved successfully to IPFS')
+      console.log('✅ Group saved successfully to Arweave')
       return {
         success: true,
         data: result.hash,
@@ -48,11 +48,11 @@ class DataPersistenceService {
    */
   async loadGroups(userAddress: string): Promise<StorageResult<GroupMetadata[]>> {
     try {
-      console.log('📥 Loading groups from IPFS...', userAddress)
+      console.log('📥 Loading groups from Arweave...', userAddress)
       
-      const groups = await ipfsOnlyStorageService.getUserGroups(userAddress)
+      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress)
       
-      console.log(`✅ Loaded ${groups.length} groups from IPFS`)
+      console.log(`✅ Loaded ${groups.length} groups from Arweave`)
       return {
         success: true,
         data: groups
@@ -68,13 +68,40 @@ class DataPersistenceService {
   }
 
   /**
+   * Get a specific group by ID
+   */
+  async getGroup(groupId: string): Promise<GroupMetadata | null> {
+    try {
+      console.log('🔍 Getting group by ID from Arweave...', groupId);
+      
+      // Use admin address for retrieval
+      const userAddress = this.ADMIN_WALLET;
+      
+      // Get all groups and find the one with matching ID
+      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress);
+      const group = groups.find(g => g.groupId === groupId);
+      
+      if (!group) {
+        console.log('❌ Group not found:', groupId);
+        return null;
+      }
+      
+      console.log('✅ Group found:', groupId);
+      return group;
+    } catch (error) {
+      console.error('❌ Error getting group by ID:', error);
+      return null;
+    }
+  }
+  
+  /**
    * Load a specific group by hash
    */
   async loadGroup(hash: string, userAddress: string): Promise<StorageResult<GroupMetadata>> {
     try {
-      console.log('📥 Loading group from IPFS...', hash)
+      console.log('📥 Loading group from Arweave...', hash)
       
-      const result = await ipfsOnlyStorageService.loadGroupData(hash, userAddress)
+      const result = await arweaveOnlyStorageService.loadGroupData(hash, userAddress)
       
       if (!result.success) {
         return {
@@ -83,7 +110,7 @@ class DataPersistenceService {
         }
       }
 
-      console.log('✅ Group loaded successfully from IPFS')
+      console.log('✅ Group loaded successfully from Arweave')
       return {
         success: true,
         data: result.data
@@ -102,11 +129,11 @@ class DataPersistenceService {
    */
   async updateGroup(groupId: string, updates: Partial<GroupMetadata>, userAddress: string): Promise<StorageResult<string>> {
     try {
-      console.log('🔄 Updating group in IPFS...', groupId)
+      console.log('🔄 Updating group in Arweave...', groupId)
       
       // For updates, we need to load the current data first, then save the updated version
-      // This is a limitation of IPFS - we can't update in place
-      const groups = await ipfsOnlyStorageService.getUserGroups(userAddress)
+      // This is a limitation of Arweave - we can't update in place
+      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress)
       const existingGroup = groups.find(g => g.groupId === groupId)
       
       if (!existingGroup) {
@@ -137,13 +164,13 @@ class DataPersistenceService {
    */
   async deleteGroup(groupId: string, userAddress: string): Promise<StorageResult<boolean>> {
     try {
-      console.log('🗑️ Deleting group from IPFS...', groupId)
+      console.log('🗑️ Deleting group from Arweave...', groupId)
       
-      // Find the group hash
-      const groups = await ipfsOnlyStorageService.getUserGroups(userAddress)
+      // Find the group transaction ID
+      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress)
       const group = groups.find(g => g.groupId === groupId)
       
-      if (!group || !group.ipfs?.hash) {
+      if (!group || !group.arweave?.transactionId) {
         return {
           success: false,
           error: 'Group or hash not found'

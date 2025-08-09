@@ -97,12 +97,45 @@ export class ArweaveService {
         },
       };
 
-      // For demo purposes, we'll simulate the transaction ID
-      // In production, you would use a wallet to sign and submit the transaction
-      const mockTransaction = await this.simulateArweaveTransaction(JSON.stringify(updatedGroupData));
-      const transactionId = mockTransaction.id;
+      // Get the Arweave key from environment variables
+      const arweaveKeyString = process.env.ARWEAVE_KEY;
+      if (!arweaveKeyString) {
+        throw new Error('Arweave key not found in environment variables');
+      }
 
+      // Parse the JWK from the environment variable
+      let key;
+      try {
+        key = JSON.parse(arweaveKeyString);
+      } catch (e) {
+        throw new Error('Invalid Arweave key format. Must be a valid JSON string.');
+      }
+
+      // Create a transaction with the group data
+      const transaction = await this.arweave.createTransaction({
+        data: JSON.stringify(updatedGroupData)
+      }, key);
+
+      // Add tags for easier querying
+      transaction.addTag('Content-Type', 'application/json');
+      transaction.addTag('App-Name', 'Concordia');
+      transaction.addTag('Group-ID', groupId);
+      transaction.addTag('User-Address', userAddress);
+      transaction.addTag('Timestamp', new Date().toISOString());
+
+      // Sign the transaction
+      await this.arweave.transactions.sign(transaction, key);
+
+      // Submit the transaction to the network
+      const response = await this.arweave.transactions.post(transaction);
+
+      if (response.status !== 200 && response.status !== 202) {
+        throw new Error(`Failed to submit transaction: ${response.statusText}`);
+      }
+
+      const transactionId = transaction.id;
       console.log('✅ Group data stored on Arweave with transaction ID:', transactionId);
+      
       return {
         success: true,
         transactionId,
@@ -127,18 +160,30 @@ export class ArweaveService {
     try {
       console.log('📥 Retrieving group data from Arweave:', transactionId);
 
-      // In a real implementation, you would fetch data from Arweave network
-      // For demo purposes, we'll simulate the retrieval
-      const data = await this.simulateArweaveRetrieval(transactionId);
-      
+      // Get transaction data from Arweave
+      const transaction = await this.arweave.transactions.get(transactionId);
+      if (!transaction) {
+        throw new Error('Transaction not found');
+      }
+
+      // Get the data from the transaction
+      const data = await transaction.get('data', { decode: true, string: true });
       if (!data) {
-        throw new Error('Group data not found');
+        throw new Error('No data found in transaction');
+      }
+
+      // Parse the JSON data
+      let groupData;
+      try {
+        groupData = JSON.parse(data as string) as GroupMetadata;
+      } catch (e) {
+        throw new Error('Invalid JSON data in transaction');
       }
 
       console.log('✅ Group data retrieved from Arweave');
       return {
         success: true,
-        data: data as GroupMetadata,
+        data: groupData,
       };
     } catch (error) {
       console.error('❌ Error retrieving group data from Arweave:', error);
@@ -154,27 +199,83 @@ export class ArweaveService {
    */
   async getUserGroups(userAddress: string): Promise<{
     success: boolean;
-    data?: GroupMetadata[];
+    groups?: GroupMetadata[];
     error?: string;
   }> {
     try {
       console.log('📥 Retrieving user groups from Arweave:', userAddress);
 
-      // In a real implementation, you would query Arweave for transactions by the user
-      // For demo purposes, we'll return mock data
-      const groups = await this.simulateFetchUserGroups(userAddress);
+      // Query Arweave GraphQL for transactions with the user's address tag
+      const query = `
+        query {
+          transactions(
+            tags: [
+              { name: "App-Name", values: ["Concordia"] },
+              { name: "User-Address", values: ["${userAddress}"] }
+            ],
+            sort: TIMESTAMP_DESC
+          ) {
+            edges {
+              node {
+                id
+                tags {
+                  name
+                  value
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await fetch('https://arweave.net/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`GraphQL request failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const transactions = result.data?.transactions?.edges || [];
+
+      // Fetch group data for each transaction
+      const groups: GroupMetadata[] = [];
+      const processedIds = new Set<string>(); // To avoid duplicates
+
+      for (const edge of transactions) {
+        const transactionId = edge.node.id;
+        
+        // Skip if we've already processed this transaction
+        if (processedIds.has(transactionId)) continue;
+        processedIds.add(transactionId);
+
+        try {
+          const groupResult = await this.getGroupData(transactionId);
+          if (groupResult.success && groupResult.data) {
+            groups.push(groupResult.data);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch group data for transaction ${transactionId}:`, error);
+          // Continue with other transactions
+        }
+      }
 
       console.log(`✅ Retrieved ${groups.length} groups for user from Arweave`);
       return {
         success: true,
-        data: groups,
+        groups: groups,
       };
     } catch (error) {
       console.error('❌ Error retrieving user groups from Arweave:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        data: [],
+        groups: [],
       };
     }
   }

@@ -10,6 +10,7 @@ import { GroupDetailsModal } from './group-details-modal';
 import { GroupOptions } from './group-options';
 import { persistentStorageService } from '@/lib/persistent-storage';
 import { GroupMetadata } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 export interface SavingsGroup extends GroupMetadata {
   id: string;
@@ -48,6 +49,7 @@ export function GroupDashboard({ groups, onGroupsChange, userAddress }: GroupDas
   const [showContributionModal, setShowContributionModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const { toast } = useToast();
 
   const handleContribution = async (amount: number) => {
     if (!selectedGroup || !userAddress) return;
@@ -84,30 +86,93 @@ export function GroupDashboard({ groups, onGroupsChange, userAddress }: GroupDas
         updatedGroup.members[memberIndex].auraPoints += Math.floor(amount * 0.1);
       }
 
-      const result = await persistentStorageService.saveGroup(selectedGroup.groupId, updatedGroup);
+      // Save to both local storage and online storage
+      const result = await persistentStorageService.saveGroup(selectedGroup.groupId, updatedGroup, userAddress);
+      
       if (result.success) {
+        // Show success toast
+        toast({
+          title: "✅ Contribution Added",
+          description: `Successfully added ${amount} to the group.`,
+          duration: 3000,
+        });
+        
         onGroupsChange();
         setShowContributionModal(false);
         console.log('✅ Contribution added successfully');
       } else {
+        // Show error toast
+        toast({
+          title: "❌ Contribution Failed",
+          description: result.error || "Failed to add contribution. Please try again.",
+          duration: 5000,
+          variant: "destructive",
+        });
+        
         console.error('❌ Failed to add contribution:', result.error);
       }
     } catch (error) {
+      // Show error toast
+      toast({
+        title: "❌ Error",
+        description: "An unexpected error occurred. Please try again.",
+        duration: 5000,
+        variant: "destructive",
+      });
+      
       console.error('❌ Error adding contribution:', error);
     }
   };
 
   const handleInviteMember = async (inviteCode: string) => {
-    if (!selectedGroup) return;
+    if (!selectedGroup || !userAddress) return;
 
     try {
       console.log('💌 Creating invite:', inviteCode);
 
-      await persistentStorageService.saveInvite(inviteCode, selectedGroup.groupId);
-      setShowInviteModal(false);
+      // Call API to save invite code
+      const response = await fetch('/api/groups/codes/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Address': userAddress
+        },
+        body: JSON.stringify({
+          groupId: selectedGroup.groupId,
+          code: inviteCode,
+          createdBy: userAddress
+        })
+      });
 
-      console.log('✅ Invite created successfully');
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "✅ Invite Created",
+          description: `Invite code created successfully: ${inviteCode}`,
+          duration: 3000,
+        });
+        
+        setShowInviteModal(false);
+        console.log('✅ Invite created successfully');
+      } else {
+        toast({
+          title: "❌ Invite Creation Failed",
+          description: result.error || "Failed to create invite code. Please try again.",
+          duration: 5000,
+          variant: "destructive",
+        });
+        
+        console.error('❌ Failed to create invite:', result.error);
+      }
     } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "An unexpected error occurred. Please try again.",
+        duration: 5000,
+        variant: "destructive",
+      });
+      
       console.error('❌ Error creating invite:', error);
     }
   };

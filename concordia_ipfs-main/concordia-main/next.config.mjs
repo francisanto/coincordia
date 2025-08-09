@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config, { isServer }) => {
-    // Handle IPFS and other Node.js modules
+    // Handle Arweave and other Node.js modules
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -20,21 +20,18 @@ const nextConfig = {
       };
     }
 
-    // Ignore dynamic require warnings from IPFS
+    // Ignore dynamic require warnings
     config.module.exprContextCritical = false;
 
     return config;
   },
 
-  // Allow IPFS gateways
+  // Allow Arweave and other image domains
   images: {
     domains: [
-      'gateway.pinata.cloud',
-      'ipfs.io',
-      'dweb.link',
-      'cloudflare-ipfs.com',
-      '4everland.io',
-      'gateway.ipfs.io',
+      'arweave.net',
+      'viewblock.io',
+      'arweave.app',
     ],
   },
   output: 'standalone',

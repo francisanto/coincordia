@@ -1,9 +1,9 @@
 
 import { NextResponse } from 'next/server'
-import { ipfsService } from '@/lib/ipfs-service'
+import { arweaveService } from '@/lib/arweave-service'
 
 // Simple in-memory storage for group index (in production, use a database)
-const groupHashIndex: Record<string, string> = {}
+const groupTransactionIndex: Record<string, string> = {}
 
 export async function POST(request: Request) {
   try {
@@ -18,19 +18,19 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the IPFS hash from the group code
+    // Get the Arweave transaction ID from the group code
     // In a real implementation, you'd validate the code against your system
-    const ipfsHash = groupHashIndex[groupCode] || groupCode
+    const transactionId = groupTransactionIndex[groupCode] || groupCode
 
-    if (!ipfsHash) {
+    if (!transactionId) {
       return NextResponse.json(
         { success: false, error: 'Invalid group code' },
         { status: 404 }
       )
     }
 
-    // Join the group via IPFS
-    const result = await ipfsService.joinGroup(ipfsHash, userAddress, nickname)
+    // Join the group via Arweave
+    const result = await arweaveService.joinGroup(transactionId, userAddress, nickname)
 
     if (!result.success) {
       return NextResponse.json(
@@ -39,15 +39,15 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update the group hash index if we got a new hash
-    if (result.newIpfsHash) {
-      groupHashIndex[groupCode] = result.newIpfsHash
+    // Update the group transaction index if we got a new transaction ID
+    if (result.newTransactionId) {
+      groupTransactionIndex[groupCode] = result.newTransactionId
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        ipfsHash: result.newIpfsHash || ipfsHash,
+        transactionId: result.newTransactionId || transactionId,
         message: 'Successfully joined group'
       }
     })
@@ -73,10 +73,10 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get group info from IPFS
-    const ipfsHash = groupHashIndex[groupCode] || groupCode
+    // Get group info from Arweave
+    const transactionId = groupTransactionIndex[groupCode] || groupCode
     
-    const result = await ipfsService.getGroupData(ipfsHash)
+    const result = await arweaveService.getGroupData(transactionId)
 
     if (!result.success) {
       return NextResponse.json(
@@ -92,8 +92,7 @@ export async function GET(request: Request) {
         name: result.data?.name,
         description: result.data?.description,
         memberCount: result.data?.members?.length || 0,
-        goalAmount: result.data?.goalAmount,
-        ipfsHash
+        transactionId
       }
     })
 

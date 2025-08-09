@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         totalGroups: groups.length,
         totalMembers: groups.reduce((total, group) => total + group.members.length, 0),
         totalContributions: groups.reduce((total, group) => 
-          total + group.contributions.reduce((sum, contrib) => sum + contrib.amount, 0), 0
+          total + (group.contributions?.reduce((sum, contrib) => sum + Number(contrib.amount), 0) || 0), 0
         ),
         averageGroupSize: groups.length > 0 ? 
           groups.reduce((total, group) => total + group.members.length, 0) / groups.length : 0

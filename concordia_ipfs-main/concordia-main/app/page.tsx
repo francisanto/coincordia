@@ -419,35 +419,59 @@ export default function HomePage() {
         console.log("✅ Group saved to localStorage successfully");
 
         // Add the new group to the current list immediately
-        const newGroup: GroupMetadata = {
+        const newGroup: any = {
           groupId: groupData.id,
           name: groupData.name,
           description: groupData.description,
-          targetAmount: groupData.targetAmount,
-          currentAmount: groupData.currentAmount,
-          contributionAmount: groupData.contributionAmount,
-          duration: groupData.duration,
+          goalAmount: groupData.targetAmount || 0,
+          currentAmount: groupData.currentAmount || 0,
+          contributionAmount: groupData.contributionAmount || 0,
+          duration: parseInt(groupData.duration) || 30,
           withdrawalDate: groupData.withdrawalDate,
+          dueDay: 1,
           members: [
             {
               address: address,
               nickname: "Creator",
-              contributed: groupData.currentAmount,
+              joinedAt: new Date().toISOString(),
+              role: "creator",
+              contribution: groupData.currentAmount || 0,
               auraPoints: 10,
+              hasVoted: false,
               status: "active"
             }
           ],
-          status: "active",
-          nextContribution: groupData.nextContribution,
-          createdBy: address,
+          contributions: [],
+          settings: {
+            dueDay: 1,
+            duration: groupData.duration?.toString() || '30',
+            withdrawalDate: groupData.withdrawalDate,
+            isActive: true,
+            maxMembers: 10
+          },
+          blockchain: { 
+            contractAddress: '',
+            transactionHash: '',
+            blockNumber: '',
+            gasUsed: '',
+            network: 'opBNB Testnet'
+          },
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: '1.0',
           // Add decentralized storage information
-          ipfsHash,
-          ipfsGatewayUrl,
-          arweaveTransactionId,
-          arweaveStatus: arweaveTransactionId ? 'pending' : undefined,
-          arweaveTimestamp: arweaveTransactionId ? new Date().toISOString() : undefined,
-          isActive: true
+          ipfs: {
+            hash: ipfsHash || '',
+            gateway: ipfsGatewayUrl || '',
+            pin: true,
+            lastUpdated: new Date().toISOString()
+          },
+          arweave: arweaveTransactionId ? {
+            transactionId: arweaveTransactionId,
+            status: 'pending',
+            timestamp: new Date().toISOString()
+          } : undefined,
+          creator: address
         };
 
         setUserGroups(prev => [...prev, newGroup]);
@@ -501,21 +525,57 @@ export default function HomePage() {
         });
 
         if (userSpecificGroups.length > 0) {
-          const formattedGroups: GroupMetadata[] = userSpecificGroups.map((group: any) => ({
-            groupId: group.id,
+          const formattedGroups: any[] = userSpecificGroups.map((group: any) => ({
+            groupId: group.id || group.groupId,
             name: group.name,
             description: group.description,
-            targetAmount: group.targetAmount || 0,
+            goalAmount: group.targetAmount || group.goalAmount || 0,
             currentAmount: group.currentAmount || 0,
             contributionAmount: group.contributionAmount || 0,
-            duration: group.duration,
+            duration: parseInt(group.duration) || 30,
             withdrawalDate: group.withdrawalDate || group.endDate,
-            members: group.members || [],
-            status: group.settings?.isActive ? "active" : "completed",
-            nextContribution: group.nextContribution || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-            createdBy: group.creator,
-            createdAt: group.createdAt,
-            isActive: group.settings?.isActive !== false
+            dueDay: group.dueDay || 1,
+            members: group.members ? group.members.map((member: any) => ({
+              address: member.address,
+              nickname: member.nickname || "Member",
+              joinedAt: member.joinedAt || new Date().toISOString(),
+              role: member.role || 'member',
+              contribution: member.contribution || member.contributed || 0,
+              auraPoints: member.auraPoints || 0,
+              hasVoted: member.hasVoted || false,
+              status: member.status || "active"
+            })) : [],
+            contributions: group.contributions || [],
+            settings: {
+              dueDay: group.dueDay || 1,
+              duration: group.duration?.toString() || '30',
+              withdrawalDate: group.withdrawalDate || group.endDate,
+              isActive: group.settings?.isActive !== false,
+              maxMembers: group.settings?.maxMembers || 10
+            },
+            blockchain: group.blockchain || { 
+              contractAddress: '',
+              transactionHash: '',
+              blockNumber: '',
+              gasUsed: '',
+              network: 'opBNB Testnet'
+            },
+            createdAt: group.createdAt || new Date().toISOString(),
+            updatedAt: group.updatedAt || new Date().toISOString(),
+            version: group.version || '1.0',
+            creator: group.creator || group.createdBy,
+            // Handle storage information
+            ipfs: group.ipfs || {
+              hash: group.ipfsHash || '',
+              gateway: group.ipfsGatewayUrl || '',
+              pin: true,
+              lastUpdated: new Date().toISOString()
+            },
+            arweave: group.arweave || (group.arweaveTransactionId ? {
+              transactionId: group.arweaveTransactionId,
+              status: group.arweaveStatus || 'pending',
+              timestamp: group.arweaveTimestamp || new Date().toISOString()
+            } : undefined)
           }))
 
           setUserGroups(formattedGroups)
@@ -808,8 +868,6 @@ export default function HomePage() {
         },
       ],
       nextContribution: nextContributionDate,
-      greenfieldObjectId: contractData.greenfieldObjectId, // From contract
-      greenfieldMetadataHash: contractData.greenfieldMetadataHash, // From contract
       txHash: txHash, // Pass transaction hash
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
