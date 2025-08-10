@@ -139,7 +139,12 @@ async function generateAIDueDateMessage(memberName, groupName, dueDate) {
 app.get("/health", async (req, res) => {
   try {
     // Check database connection
-    const dbStatus = await connectDB();
+    let dbStatus = false;
+    try {
+      dbStatus = await connectDB();
+    } catch (dbError) {
+      console.error("Database connection check failed:", dbError);
+    }
     
     // Check if server is responding
     const serverStatus = true;

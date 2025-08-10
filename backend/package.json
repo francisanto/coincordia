@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server-mongodb.js",
     "dev": "nodemon server-mongodb.js",
+    "install:skip": "echo 'Skipping npm ci for Railway build'",
+    "postinstall": "echo 'Dependencies installed successfully'",
     "test": "jest",
     "lint": "eslint .",
     "deploy": "pm2 start ecosystem.config.js"
