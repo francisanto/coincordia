@@ -109,7 +109,11 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
                 Admin Dashboard
               </CardTitle>
               <CardDescription className="text-white/70">
+<<<<<<< HEAD
                 Manage all groups and user data stored in MongoDB
+=======
+                Manage all groups and user data stored in BNB Greenfield
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
               </CardDescription>
             </CardHeader>
             <CardContent>

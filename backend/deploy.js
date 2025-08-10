@@ -16,6 +16,11 @@ const CONCORDIA_ABI = [
       { name: "_duration", type: "uint256" },
       { name: "_withdrawalDate", type: "uint256" },
       { name: "_dueDay", type: "uint8" },
+<<<<<<< HEAD
+=======
+      { name: "_greenfieldObjectId", type: "string" },
+      { name: "_greenfieldMetadataHash", type: "string" },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     ],
     name: "createGroup",
     outputs: [],
@@ -54,6 +59,30 @@ const CONCORDIA_ABI = [
     type: "function",
   },
   {
+<<<<<<< HEAD
+=======
+    inputs: [
+      { name: "groupId", type: "uint256" },
+      { name: "newObjectId", type: "string" },
+      { name: "newMetadataHash", type: "string" },
+    ],
+    name: "updateGreenfieldObject",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "groupId", type: "uint256" },
+      { name: "metadataHash", type: "string" },
+    ],
+    name: "updateGroupMetadata",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     inputs: [{ name: "groupId", type: "uint256" }],
     name: "getGroupDetails",
     outputs: [
@@ -68,6 +97,11 @@ const CONCORDIA_ABI = [
           { name: "withdrawalDate", type: "uint256" },
           { name: "creator", type: "address" },
           { name: "isActive", type: "bool" },
+<<<<<<< HEAD
+=======
+          { name: "greenfieldObjectId", type: "string" },
+          { name: "greenfieldMetadataHash", type: "string" },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           { name: "createdAt", type: "uint256" },
           { name: "totalContributions", type: "uint256" },
           { name: "memberCount", type: "uint256" },
@@ -131,6 +165,16 @@ const CONCORDIA_ABI = [
   },
   {
     inputs: [{ name: "groupId", type: "uint256" }],
+<<<<<<< HEAD
+=======
+    name: "getGroupMetadataHash",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "groupId", type: "uint256" }],
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     name: "getGroupBalance",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
@@ -275,10 +319,18 @@ async function deployContract() {
       gasUsed: deploymentTx?.gasLimit?.toString(),
       deploymentDate: new Date().toISOString(),
       abi: CONCORDIA_ABI,
+<<<<<<< HEAD
       mongodbIntegration: {
         enabled: true,
         storageType: "MongoDB",
         description: "All data stored in MongoDB Atlas"
+=======
+      greenfieldIntegration: {
+        enabled: true,
+        bucketName: process.env.GREENFIELD_BUCKET || "concordia-data",
+        endpoint: process.env.GREENFIELD_ENDPOINT || "https://gnfd-testnet-sp1.bnbchain.org",
+        chainId: process.env.GREENFIELD_CHAIN_ID || 5600,
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       },
     }
 
@@ -294,16 +346,27 @@ NEXT_PUBLIC_CONTRACT_ADDRESS=${contractAddress}
 NEXT_PUBLIC_NETWORK=${network}
 NEXT_PUBLIC_RPC_URL=${rpcUrl}
 
+<<<<<<< HEAD
 # MongoDB Configuration
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/concordia?retryWrites=true&w=majority
+=======
+# BNB Greenfield Configuration
+GREENFIELD_ENDPOINT=${process.env.GREENFIELD_ENDPOINT || "https://gnfd-testnet-sp1.bnbchain.org"}
+GREENFIELD_CHAIN_ID=${process.env.GREENFIELD_CHAIN_ID || 5600}
+GREENFIELD_BUCKET=${process.env.GREENFIELD_BUCKET || "concordia-data"}
+GREENFIELD_ACCOUNT_ADDRESS=${process.env.GREENFIELD_ACCOUNT_ADDRESS || ""}
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
 # Backend Configuration
 PORT=${process.env.PORT || 3001}
 FRONTEND_URL=${process.env.FRONTEND_URL}
+<<<<<<< HEAD
 
 # Admin Configuration
 ADMIN_ADDRESS=${wallet.address}
 ADMIN_API_KEY=your-secure-admin-api-key-here
+=======
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 `
 
     const envPath = path.join(__dirname, ".env.deployment")
@@ -316,10 +379,16 @@ ADMIN_API_KEY=your-secure-admin-api-key-here
     console.log("\n📋 Next steps:")
     console.log("1. Copy the contract address to your frontend .env.local file")
     console.log("2. Update your backend .env file with the new contract address")
+<<<<<<< HEAD
     console.log("3. Configure MongoDB URI in your backend .env file")
     console.log("4. Set up admin API key for backend access")
     console.log("5. Start your backend server: npm run dev")
     console.log("6. Start your frontend: npm run dev")
+=======
+    console.log("3. Configure Greenfield credentials in your backend .env file")
+    console.log("4. Start your backend server: npm run dev")
+    console.log("5. Start your frontend: npm run dev")
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     console.log("\n🔗 Useful links:")
     console.log(`- Contract on Explorer: https://testnet.bscscan.com/address/${contractAddress}`)
     console.log(`- Transaction: https://testnet.bscscan.com/tx/${deploymentTx?.hash}`)

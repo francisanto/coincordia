@@ -57,7 +57,11 @@
     "cors": "latest",
     "crypto": "latest",
     "date-fns": "^3.6.0",
+<<<<<<< HEAD
     "dotenv": "17.2.1",
+=======
+    "dotenv": "^17.2.0",
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     "embla-carousel-react": "8.5.1",
     "ethers": "^6.15.0",
     "express": "latest",

@@ -6,7 +6,11 @@ import { parseEther } from "viem"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, CheckCircle, AlertCircle, ExternalLink, Database, Shield } from "lucide-react"
+<<<<<<< HEAD
 
+=======
+import { greenfieldService, type GroupMetadata } from "@/lib/greenfield-service"
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
 // Updated Concordia Smart Contract ABI - matches your actual contract
 export const CONCORDIA_CONTRACT_ABI = [
@@ -18,6 +22,11 @@ export const CONCORDIA_CONTRACT_ABI = [
       { name: "_duration", type: "uint256" },
       { name: "_withdrawalDate", type: "uint256" },
       { name: "_dueDay", type: "uint8" },
+<<<<<<< HEAD
+=======
+      { name: "_greenfieldObjectId", type: "string" },
+      { name: "_greenfieldMetadataHash", type: "string" },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     ],
     name: "createGroup",
     outputs: [],
@@ -55,7 +64,21 @@ export const CONCORDIA_CONTRACT_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+<<<<<<< HEAD
 
+=======
+  {
+    inputs: [
+      { name: "groupId", type: "uint256" },
+      { name: "newObjectId", type: "string" },
+      { name: "newMetadataHash", type: "string" },
+    ],
+    name: "updateGreenfieldObject",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
   {
     inputs: [
       { name: "groupId", type: "uint256" },
@@ -81,7 +104,12 @@ export const CONCORDIA_CONTRACT_ABI = [
           { name: "withdrawalDate", type: "uint256" },
           { name: "creator", type: "address" },
           { name: "isActive", type: "bool" },
+<<<<<<< HEAD
 
+=======
+          { name: "greenfieldObjectId", type: "string" },
+          { name: "greenfieldMetadataHash", type: "string" },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           { name: "createdAt", type: "uint256" },
           { name: "totalContributions", type: "uint256" },
           { name: "memberCount", type: "uint256" },
@@ -199,7 +227,12 @@ export const CONCORDIA_CONTRACT_ABI = [
       { indexed: false, name: "goalAmount", type: "uint256" },
       { indexed: false, name: "duration", type: "uint256" },
       { indexed: false, name: "withdrawalDate", type: "uint256" },
+<<<<<<< HEAD
       
+=======
+      { indexed: false, name: "greenfieldObjectId", type: "string" },
+      { indexed: false, name: "greenfieldMetadataHash", type: "string" },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     ],
     name: "GroupCreated",
     type: "event",
@@ -247,7 +280,12 @@ export function SmartContractIntegration({
   const { address } = useAccount()
   const [isCreating, setIsCreating] = useState(false)
   const [activeTxType, setActiveTxType] = useState<"create" | "delete" | null>(null)
+<<<<<<< HEAD
 
+=======
+  const [greenfieldObjectId, setGreenfieldObjectId] = useState<string>("")
+  const [greenfieldMetadataHash, setGreenfieldMetadataHash] = useState<string>("")
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
   const [storageStatus, setStorageStatus] = useState<string>("")
 
   const { writeContract, data: hash, error, isPending } = useWriteContract()
@@ -304,12 +342,68 @@ export function SmartContractIntegration({
               ? 180 * 24 * 60 * 60
               : 365 * 24 * 60 * 60
 
+<<<<<<< HEAD
       // Generate unique group ID
       const groupId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
       setStorageStatus("Creating smart contract...")
 
       // Call smart contract
+=======
+      // Generate temporary Greenfield object ID
+      const tempObjectId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      setGreenfieldObjectId(tempObjectId)
+
+      // Create comprehensive group metadata
+      const groupMetadata = greenfieldService.createGroupMetadata({
+        groupId: tempObjectId,
+        name: teamName,
+        description: groupDescription,
+        creator: address,
+        goalAmount: Number.parseFloat(contributionAmount),
+        duration,
+        withdrawalDate: withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        dueDay: dueDay ? Number.parseInt(dueDay) : 1,
+        contractAddress: CONCORDIA_CONTRACT_ADDRESS,
+        transactionHash: "",
+        blockNumber: "",
+        gasUsed: "",
+        objectId: tempObjectId,
+        objectName: `groups/group_${tempObjectId}.json`,
+        bucketName: "concordia-data",
+        endpoint: "https://gnfd-testnet-sp1.bnbchain.org",
+      })
+
+      // Generate metadata hash
+      const metadataHash = greenfieldService.generateMetadataHash(groupMetadata)
+      setGreenfieldMetadataHash(metadataHash)
+
+      setStorageStatus("Storing metadata in Greenfield...")
+
+      // Store metadata in Greenfield first (with timeout and fallback)
+      let storeResult: { success: boolean; objectId?: string; error?: string } = { success: false }
+      try {
+        storeResult = await Promise.race([
+          greenfieldService.storeGroupData(tempObjectId, groupMetadata),
+          new Promise<{ success: boolean; objectId?: string; error?: string }>((_, reject) => 
+            setTimeout(() => reject(new Error("Greenfield timeout")), 10000)
+          )
+        ])
+      } catch (error) {
+        console.warn("Greenfield storage failed, proceeding with fallback:", error)
+        // Use fallback object ID if Greenfield fails
+        storeResult = { success: true, objectId: tempObjectId }
+      }
+
+      if (!storeResult.success) {
+        console.warn("Greenfield storage failed, using fallback")
+        storeResult = { success: true, objectId: tempObjectId }
+      }
+
+      setStorageStatus("Creating smart contract...")
+
+      // Call smart contract with Greenfield data
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       console.log("Calling smart contract with args:", {
         teamName,
         groupDescription,
@@ -317,7 +411,12 @@ export function SmartContractIntegration({
         durationSeconds,
         finalDate: Math.floor(finalDate),
         dueDay: Number(dueDay ? Number.parseInt(dueDay) : 1),
+<<<<<<< HEAD
         groupId
+=======
+        objectId: storeResult.objectId || tempObjectId,
+        metadataHash
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       })
 
       // For testing without deployed contract, simulate the transaction
@@ -337,11 +436,20 @@ export function SmartContractIntegration({
           targetAmount: Number.parseFloat(contributionAmount) * 10,
           withdrawalDate: withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
           isActive: true,
+<<<<<<< HEAD
           groupId: groupId,
         }
         
         console.log("✅ Test mode: Calling success callback with data:", contractData)
         onSuccess?.(groupId, mockHash, contractData)
+=======
+          greenfieldObjectId: greenfieldObjectId,
+          greenfieldMetadataHash: greenfieldMetadataHash,
+        }
+        
+        console.log("✅ Test mode: Calling success callback with data:", contractData)
+        onSuccess?.(storeResult.objectId || tempObjectId, mockHash, contractData)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         setActiveTxType(null)
         setStorageStatus("Group created successfully! (Test Mode)")
         return
@@ -409,7 +517,37 @@ export function SmartContractIntegration({
           // In a real implementation, you would parse the GroupCreated event
           const groupId = hash // Using tx hash as group ID for demo
 
+<<<<<<< HEAD
 
+=======
+          // Update metadata with blockchain transaction details
+          const updatedMetadata = {
+            blockchain: {
+              contractAddress: CONCORDIA_CONTRACT_ADDRESS,
+              transactionHash: hash,
+              blockNumber: receipt?.blockNumber?.toString() || "",
+              gasUsed: receipt?.gasUsed?.toString() || "",
+              network: "opBNB Testnet",
+            },
+            updatedAt: new Date().toISOString(),
+          }
+
+                // Update metadata in Greenfield (with timeout)
+      try {
+        const updateResult = await Promise.race([
+          greenfieldService.updateGroupMetadata(groupId, updatedMetadata),
+          new Promise<{ success: boolean; metadataHash?: string; error?: string }>((_, reject) => 
+            setTimeout(() => reject(new Error("Update timeout")), 5000)
+          )
+        ])
+
+        if (!updateResult.success) {
+          console.warn("Failed to update metadata:", updateResult.error)
+          }
+      } catch (error) {
+        console.warn("Metadata update failed, continuing:", error)
+      }
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
           setStorageStatus("Group created successfully!")
 
@@ -423,14 +561,23 @@ export function SmartContractIntegration({
             targetAmount: Number.parseFloat(contributionAmount) * 10, // Assuming 10x target
             withdrawalDate: withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             isActive: true,
+<<<<<<< HEAD
             groupId: groupId,
+=======
+            greenfieldObjectId: greenfieldObjectId,
+            greenfieldMetadataHash: greenfieldMetadataHash,
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           }
 
           onSuccess?.(groupId, hash, contractData)
           setCallbackCalled(true)
         } catch (error) {
           console.error("❌ Error in success callback:", error)
+<<<<<<< HEAD
           // Still call onSuccess with basic data
+=======
+          // Still call onSuccess with basic data even if Greenfield fails
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           const basicContractData = {
             creator: address,
             teamName,
@@ -441,7 +588,12 @@ export function SmartContractIntegration({
             withdrawalDate:
               withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             isActive: true,
+<<<<<<< HEAD
             groupId: groupId,
+=======
+            greenfieldObjectId: greenfieldObjectId,
+            greenfieldMetadataHash: greenfieldMetadataHash,
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           }
           onSuccess?.(hash, hash, basicContractData)
           setCallbackCalled(true)
@@ -500,7 +652,11 @@ export function SmartContractIntegration({
                 <CheckCircle className="h-5 w-5 text-green-400" />
                 <div className="flex-1">
                   <div className="text-white font-semibold">Group Created Successfully!</div>
+<<<<<<< HEAD
                   <div className="text-white/70 text-sm">Data stored on blockchain and MongoDB</div>
+=======
+                  <div className="text-white/70 text-sm">Data stored on blockchain and BNB Greenfield</div>
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
                 </div>
                 {hash && (
                   <Button
@@ -564,16 +720,25 @@ export function SmartContractIntegration({
         )}
       </Button>
 
+<<<<<<< HEAD
       {/* MongoDB Integration Info */}
+=======
+      {/* Greenfield Integration Info */}
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       <Card className="bg-concordia-light-purple/10 border-concordia-light-purple/30">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2 mb-3">
             <Database className="h-4 w-4 text-concordia-pink" />
+<<<<<<< HEAD
             <span className="text-white font-semibold text-sm">MongoDB Integration</span>
+=======
+            <span className="text-white font-semibold text-sm">BNB Greenfield Integration</span>
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           </div>
           <div className="space-y-2 text-xs text-white/70">
             <div className="flex items-center space-x-2">
               <Shield className="h-3 w-3" />
+<<<<<<< HEAD
               <span>Group metadata stored in MongoDB database</span>
             </div>
             <div className="flex items-center space-x-2">
@@ -583,6 +748,17 @@ export function SmartContractIntegration({
             <div className="flex items-center space-x-2">
               <ExternalLink className="h-3 w-3" />
               <span>Smart contract linked to MongoDB documents</span>
+=======
+              <span>Group metadata stored on decentralized storage</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-3 w-3" />
+              <span>Immutable data with cryptographic verification</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <ExternalLink className="h-3 w-3" />
+              <span>Smart contract linked to Greenfield objects</span>
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
             </div>
           </div>
         </CardContent>

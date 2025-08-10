@@ -85,7 +85,12 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
         try {
           const auraPoints = calculateAuraPoints()
 
+<<<<<<< HEAD
           
+=======
+          // Update BNB Greenfield with new contribution data
+          await updateContributionInGreenfield(group.id, {
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
             contributor: address,
             amount: group.contributionAmount,
             auraPoints,
@@ -101,7 +106,12 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
             onClose()
           }, 2000)
         } catch (error) {
+<<<<<<< HEAD
           
+=======
+          console.error("Error updating Greenfield:", error)
+          // Still call onSuccess even if Greenfield update fails
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           onSuccess(group.id, group.contributionAmount, hash, calculateAuraPoints())
           setCallbackCalled(true)
         }
@@ -181,7 +191,11 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
                     <Loader2 className="h-5 w-5 text-concordia-light-purple animate-spin" />
                     <div>
                       <div className="text-white font-semibold">Confirming Transaction</div>
+<<<<<<< HEAD
                       <div className="text-white/70 text-sm">Updating MongoDB...</div>
+=======
+                      <div className="text-white/70 text-sm">Updating BNB Greenfield...</div>
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
                     </div>
                   </div>
                 )}
@@ -272,4 +286,21 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
   )
 }
 
+<<<<<<< HEAD
 
+=======
+// BNB Greenfield update function for contributions
+async function updateContributionInGreenfield(groupId: string, contributionData: any): Promise<void> {
+  try {
+    console.log("Updating contribution in BNB Greenfield:", { groupId, contributionData })
+
+    // Mock API delay
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    console.log("Successfully updated contribution in BNB Greenfield")
+  } catch (error) {
+    console.error("Error updating contribution in BNB Greenfield:", error)
+    throw error
+  }
+}
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1

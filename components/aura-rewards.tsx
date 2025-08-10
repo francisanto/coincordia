@@ -298,7 +298,11 @@ export function AuraRewards({ userAuraPoints, onAuraPointsUpdate, onBackToDashbo
   const [lastPurchase, setLastPurchase] = useState<AuraPurchase | null>(null)
   const { toast } = useToast()
 
+<<<<<<< HEAD
   
+=======
+  // Load user purchases from Greenfield
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
   useEffect(() => {
     loadUserPurchases()
   }, [])
@@ -306,7 +310,11 @@ export function AuraRewards({ userAuraPoints, onAuraPointsUpdate, onBackToDashbo
   const loadUserPurchases = async () => {
     try {
       setIsLoading(true)
+<<<<<<< HEAD
   
+=======
+      // Load from localStorage for now (will be replaced with Greenfield)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       const stored = localStorage.getItem('concordia-aura-purchases')
       if (stored) {
         setUserPurchases(JSON.parse(stored))
@@ -318,15 +326,26 @@ export function AuraRewards({ userAuraPoints, onAuraPointsUpdate, onBackToDashbo
     }
   }
 
+<<<<<<< HEAD
   const savePurchaseToMongoDB = async (purchase: AuraPurchase) => {
     try {
       // Save to localStorage for now (will be replaced with MongoDB API)
+=======
+  const savePurchaseToGreenfield = async (purchase: AuraPurchase) => {
+    try {
+      // Save to localStorage for now (will be replaced with Greenfield API)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       const existing = JSON.parse(localStorage.getItem('concordia-aura-purchases') || '[]')
       existing.push(purchase)
       localStorage.setItem('concordia-aura-purchases', JSON.stringify(existing))
       
+<<<<<<< HEAD
       // TODO: Replace with actual MongoDB API call
       // await mongodbService.saveAuraPurchase(purchase)
+=======
+      // TODO: Replace with actual Greenfield API call
+      // await greenfieldService.saveAuraPurchase(purchase)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       
       console.log("✅ Aura purchase saved to storage")
     } catch (error) {
@@ -383,8 +402,13 @@ export function AuraRewards({ userAuraPoints, onAuraPointsUpdate, onBackToDashbo
         discountedPrice: selectedReward.discountedPrice
       }
 
+<<<<<<< HEAD
       // Save to MongoDB
       await savePurchaseToMongoDB(purchase)
+=======
+      // Save to Greenfield
+      await savePurchaseToGreenfield(purchase)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
       // Update local state
       setUserPurchases(prev => [...prev, purchase])

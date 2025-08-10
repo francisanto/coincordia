@@ -19,7 +19,11 @@ import { AuraRewards } from "@/components/aura-rewards"
 import { NFTWalletDisplay } from "@/components/nft-wallet-display"
 import { AdminDashboard } from "@/components/admin-dashboard"
 import { GroupOptions } from "@/components/group-options"
+<<<<<<< HEAD
 
+=======
+import { JoinGroupModal } from "@/components/join-group-modal"
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -186,11 +190,19 @@ export default function HomePage() {
   const [autoRedirectDone, setAutoRedirectDone] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminApiKey, setAdminApiKey] = useState("")
+<<<<<<< HEAD
 
 
   const [showCreateModal, setShowCreateModal] = useState(false) // State for create group modal
   const [showJoinModal, setShowJoinModal] = useState(false) // State for join group modal
 
+=======
+  const [inviteCode, setInviteCode] = useState("")
+  const [joinGroupModalOpen, setJoinGroupModalOpen] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false) // State for create group modal
+  const [showJoinModal, setShowJoinModal] = useState(false) // State for join group modal
+  const [isJoining, setIsJoining] = useState(false) // State to track if joining process is active
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
 
   // Define admin wallet from environment variables or default
@@ -309,8 +321,13 @@ export default function HomePage() {
 
         // Then try to sync with backend/MongoDB if available
         try {
+<<<<<<< HEAD
                   const { mongodbStorageService } = await import('@/lib/mongodb-storage');
         const remoteGroups = await mongodbStorageService.loadGroups(address);
+=======
+          const { hybridStorageService } = await import('@/lib/hybrid-storage');
+          const remoteGroups = await hybridStorageService.loadGroups(address);
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           console.log("📊 Remote groups from database:", remoteGroups.length);
 
           if (remoteGroups.length > 0) {
@@ -412,8 +429,13 @@ export default function HomePage() {
       };
 
       // Use the hybrid storage service to save the group
+<<<<<<< HEAD
               const { mongodbStorageService } = await import('@/lib/mongodb-storage');
         const success = await mongodbStorageService.saveGroup(preparedGroupData, address);
+=======
+      const { hybridStorageService } = await import('@/lib/hybrid-storage');
+      const success = await hybridStorageService.saveGroup(preparedGroupData, address);
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
       if (success) {
         console.log("✅ Group saved to Greenfield successfully");
@@ -449,6 +471,7 @@ export default function HomePage() {
 
         toast({
           title: "✅ Group Created",
+<<<<<<< HEAD
           description: "Group saved to MongoDB successfully",
           duration: 3000,
         });
@@ -462,6 +485,21 @@ export default function HomePage() {
       toast({
         title: "❌ Save Failed",
         description: "Failed to save group to MongoDB. Please try again.",
+=======
+          description: "Group saved to BNB Greenfield successfully",
+          duration: 3000,
+        });
+      } else {
+        throw new Error("Failed to save to Greenfield");
+      }
+
+    } catch (error) {
+      console.error("❌ Error saving group to Greenfield:", error);
+
+      toast({
+        title: "❌ Save Failed",
+        description: "Failed to save group to BNB Greenfield. Please try again.",
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         duration: 5000,
       });
 
@@ -481,14 +519,22 @@ export default function HomePage() {
 
       setIsLoadingGroups(true);
       try {
+<<<<<<< HEAD
         console.log('📥 Loading user groups from MongoDB...');
+=======
+        console.log('📥 Loading user groups from Greenfield...');
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
         // Fetch groups from API with user address
         const response = await fetch(`/api/groups?address=${address}${isAdmin ? '&admin_key=' + process.env.ADMIN_API_KEY : ''}`)
         const data = await response.json()
 
         if (data.success && data.groups) {
+<<<<<<< HEAD
           // Convert MongoDB data to SavingsGroup format
+=======
+          // Convert Greenfield data to SavingsGroup format
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
           const formattedGroups: SavingsGroup[] = data.groups.map((group: any) => ({
             id: group.groupId || group.id,
             name: group.name,
@@ -513,7 +559,11 @@ export default function HomePage() {
           setUserGroups([])
         }
       } catch (error) {
+<<<<<<< HEAD
         console.error("❌ Error loading user groups from MongoDB:", error)
+=======
+        console.error("❌ Error loading user groups from Greenfield:", error)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         toast.error("Failed to load your groups from blockchain storage")
         setUserGroups([])
       } finally {
@@ -524,10 +574,17 @@ export default function HomePage() {
     loadUserGroups();
   }, [isConnected, address, isAdmin]); // Re-run if isAdmin status changes
 
+<<<<<<< HEAD
   // Handle group deletion using MongoDB
   const handleDeleteGroup = async (groupId: string) => {
     try {
       console.log('🗑️ Deleting group from MongoDB:', groupId)
+=======
+  // Handle group deletion using Greenfield
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      console.log('🗑️ Deleting group from Greenfield:', groupId)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
       const response = await fetch(`/api/groups/${groupId}/delete`, {
         method: 'DELETE',
@@ -551,12 +608,21 @@ export default function HomePage() {
     }
   }
 
+<<<<<<< HEAD
   // Handle group creation and saving to MongoDB
   const handleGroupCreated = async (newGroup: SavingsGroup) => {
     try {
       console.log('💾 Saving group to MongoDB:', newGroup)
 
               // Convert to MongoDB format
+=======
+  // Handle group creation and saving to Greenfield
+  const handleGroupCreated = async (newGroup: SavingsGroup) => {
+    try {
+      console.log('💾 Saving group to Greenfield:', newGroup)
+
+      // Convert to Greenfield format
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       const groupData = {
         groupId: newGroup.id,
         name: newGroup.name,
@@ -581,7 +647,17 @@ export default function HomePage() {
           gasUsed: '',
           network: 'opBNB Testnet',
         },
+<<<<<<< HEAD
 
+=======
+        greenfield: {
+          objectId: `group_${newGroup.id}`,
+          objectName: `groups/group_${newGroup.id}.json`,
+          metadataHash: '',
+          bucketName: 'concordia-data',
+          endpoint: process.env.GREENFIELD_ENDPOINT || '',
+        },
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       }
 
       const response = await fetch('/api/groups/store', {
@@ -612,8 +688,13 @@ export default function HomePage() {
         // Force reload groups to ensure data consistency
         setTimeout(async () => {
           try {
+<<<<<<< HEAD
                     const { mongodbStorageService } = await import('@/lib/mongodb-storage');
         const refreshedGroups = await mongodbStorageService.loadGroups(address);
+=======
+            const { hybridStorageService } = await import('@/lib/hybrid-storage');
+            const refreshedGroups = await hybridStorageService.loadGroups(address);
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
             const formattedGroups: SavingsGroup[] = refreshedGroups.map((group: any) => ({
               id: group.id,
@@ -649,7 +730,11 @@ export default function HomePage() {
         throw new Error(result.error)
       }
     } catch (error) {
+<<<<<<< HEAD
       console.error("❌ Error saving group to MongoDB:", error)
+=======
+      console.error("❌ Error saving group to Greenfield:", error)
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       toast({
         title: "❌ Creation Failed",
         description: "Failed to save group to blockchain storage",
@@ -839,7 +924,12 @@ export default function HomePage() {
         },
       ],
       nextContribution: nextContributionDate,
+<<<<<<< HEAD
               groupId: contractData.groupId, // From contract
+=======
+      greenfieldObjectId: contractData.greenfieldObjectId, // From contract
+      greenfieldMetadataHash: contractData.greenfieldMetadataHash, // From contract
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       txHash: txHash, // Pass transaction hash
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -868,7 +958,11 @@ export default function HomePage() {
       console.error("❌ Error in group creation flow:", error);
       toast({
         title: "⚠️ Group Created but Storage Failed",
+<<<<<<< HEAD
         description: "Group was created on blockchain but there was an issue saving to MongoDB. Please refresh the page.",
+=======
+        description: "Group was created on blockchain but there was an issue saving to BNB Greenfield. Please refresh the page.",
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         duration: 8000,
       });
 
@@ -877,7 +971,94 @@ export default function HomePage() {
     }
   }
 
+<<<<<<< HEAD
 
+=======
+  // Handle joining a group via invite code
+  const joinGroupByInviteCode = async (inviteCode: string) => {
+    if (!isConnected || !address) {
+      toast({
+        title: "❌ Wallet Not Connected",
+        description: "Please connect your wallet to join a group",
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (!inviteCode) {
+      toast({
+        title: "❌ Invite Code Required",
+        description: "Please enter a valid invite code",
+        duration: 3000,
+      });
+      return;
+    }
+
+    setIsJoining(true) // Set joining state
+
+    try {
+      const response = await fetch(`/api/groups/join?invite_code=${inviteCode}&address=${address}`);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: "✅ Group Joined",
+          description: `You've successfully joined ${data.group.name}`,
+          duration: 3000,
+        });
+
+        // Refresh groups to include the newly joined group
+        setTimeout(async () => {
+          try {
+            const { hybridStorageService } = await import('@/lib/hybrid-storage');
+            const allGroups = await hybridStorageService.loadGroups(address);
+
+            const formattedGroups: SavingsGroup[] = allGroups.map((group: any) => ({
+              id: group.id,
+              name: group.name || "Unnamed Group",
+              goal: group.description || group.goal || "No description",
+              targetAmount: group.targetAmount || 0,
+              currentAmount: group.currentAmount || 0,
+              contributionAmount: group.contributionAmount || 0,
+              duration: group.duration,
+              endDate: group.endDate || "unknown",
+              members: group.members || [],
+              status: group.status || "active",
+              nextContribution: group.nextContribution || "unknown",
+              createdBy: group.createdBy || "unknown",
+              createdAt: group.createdAt || new Date().toISOString(),
+              isActive: group.isActive !== false,
+            }));
+
+            setUserGroups(formattedGroups);
+            console.log("✅ Groups refreshed after joining:", formattedGroups.length);
+          } catch (error) {
+            console.error("⚠️ Failed to refresh groups after joining:", error);
+          } finally {
+            setIsJoining(false) // Reset joining state
+          }
+        }, 1000);
+
+        setActiveTab("dashboard");
+      } else {
+        toast({
+          title: "❌ Failed to Join Group",
+          description: data.error || "Invalid invite code or you're already a member",
+          duration: 5000,
+        });
+        setIsJoining(false) // Reset joining state on error
+      }
+    } catch (error) {
+      console.error("Error joining group:", error);
+      toast({
+        title: "❌ Error",
+        description: "Could not join the group. Please try again.",
+        duration: 5000,
+      });
+      setIsJoining(false) // Reset joining state on error
+    }
+  }
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
   // Calculate Aura Points based on user's contributions (simplified mechanism)
   useEffect(() => {
@@ -1099,7 +1280,11 @@ export default function HomePage() {
             <ClientOnly>
               <GroupOptions 
                 onCreateGroup={() => setActiveTab("create")}
+<<<<<<< HEAD
   
+=======
+                onJoinGroup={() => setJoinGroupModalOpen(true)}
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
               />
             </ClientOnly>
           </TabsContent>
@@ -1254,7 +1439,41 @@ export default function HomePage() {
                 </p>
               </div>
 
+<<<<<<< HEAD
 
+=======
+              {/* Join Group by Invite Code */}
+              <div className="mb-6">
+                <Card className="bg-concordia-dark-blue/80 border-concordia-light-purple/30 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="text-white text-xl flex items-center">
+                      <Users className="h-5 w-5 text-concordia-pink mr-2" />
+                      Join Existing Group
+                    </CardTitle>
+                    <CardDescription className="text-white/70">
+                      Enter an invite code to join a friend's savings group
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex space-x-2">
+                      <Input 
+                        placeholder="Enter invite code (e.g. ABC123)" 
+                        className="bg-concordia-purple/20 border-concordia-light-purple/30 text-white"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value)}
+                      />
+                      <Button 
+                        onClick={() => joinGroupByInviteCode(inviteCode)}
+                        className="bg-concordia-pink hover:bg-concordia-pink/80"
+                        disabled={!inviteCode || isJoining}
+                      >
+                        {isJoining ? "Joining..." : "Join Group"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
               <GroupDashboard
                 groups={userGroups}
                 onDeleteGroup={handleDeleteGroup}
@@ -1287,7 +1506,20 @@ export default function HomePage() {
                     <p className="text-white/80 text-lg">
                       {"Set your contribution amount and duration to start saving with friends"}
                     </p>
+<<<<<<< HEAD
 
+=======
+                    <div className="mt-4">
+                      <Button
+                        onClick={() => setJoinGroupModalOpen(true)}
+                        variant="outline"
+                        className="border-concordia-light-purple text-concordia-light-purple hover:bg-concordia-light-purple/10 bg-transparent font-semibold"
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        Join Existing Group
+                      </Button>
+                    </div>
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
                   <div className="mt-4 p-4 bg-concordia-purple/30 border border-concordia-light-purple/30 rounded-lg">
                     <p className="text-white flex items-center justify-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-concordia-pink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1623,7 +1855,20 @@ export default function HomePage() {
       {/* Toast notifications */}
       <Toaster />
 
+<<<<<<< HEAD
 
+=======
+      {/* Join Group Modal */}
+      <JoinGroupModal
+        isOpen={joinGroupModalOpen}
+        onClose={() => setJoinGroupModalOpen(false)}
+        onJoinSuccess={(groupId, groupName) => {
+          console.log(`Successfully joined group: ${groupName} (${groupId})`)
+          // Refresh the page to reload groups
+          window.location.reload()
+        }}
+      />
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     </div>
   )
 }

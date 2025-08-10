@@ -17,6 +17,11 @@ contract Concordia is Ownable, ReentrancyGuard {
         uint256 withdrawalDate;
         address creator;
         bool isActive;
+<<<<<<< HEAD
+=======
+        string greenfieldObjectId;
+        string greenfieldMetadataHash;
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         uint256 createdAt;
         uint256 totalContributions;
         uint256 memberCount;
@@ -45,6 +50,10 @@ contract Concordia is Ownable, ReentrancyGuard {
     mapping(uint256 => address[]) private memberList;
     mapping(uint256 => uint256) private groupBalance;
     mapping(uint256 => Contribution[]) private groupContributions;
+<<<<<<< HEAD
+=======
+    mapping(uint256 => string) private groupMetadataHashes;
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
     event GroupCreated(
         uint256 indexed groupId, 
@@ -53,7 +62,13 @@ contract Concordia is Ownable, ReentrancyGuard {
         string description,
         uint256 goalAmount,
         uint256 duration,
+<<<<<<< HEAD
         uint256 withdrawalDate
+=======
+        uint256 withdrawalDate,
+        string greenfieldObjectId,
+        string greenfieldMetadataHash
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     );
     event JoinedGroup(uint256 indexed groupId, address indexed member, string nickname);
     event Contributed(
@@ -66,6 +81,11 @@ contract Concordia is Ownable, ReentrancyGuard {
     );
     event WithdrawalExecuted(uint256 indexed groupId, uint256 totalAmount);
     event EmergencyWithdrawal(uint256 indexed groupId, address indexed executor, uint256 penaltyAmount);
+<<<<<<< HEAD
+=======
+    event GreenfieldObjectUpdated(uint256 indexed groupId, string newObjectId, string newMetadataHash);
+    event GroupMetadataUpdated(uint256 indexed groupId, string metadataHash);
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
     modifier onlyGroupCreator(uint256 groupId) {
         require(groups[groupId].creator == msg.sender, "Only group creator");
@@ -88,12 +108,23 @@ contract Concordia is Ownable, ReentrancyGuard {
         uint256 _goalAmount,
         uint256 _duration,
         uint256 _withdrawalDate,
+<<<<<<< HEAD
         uint8 _dueDay
+=======
+        uint8 _dueDay,
+        string memory _greenfieldObjectId,
+        string memory _greenfieldMetadataHash
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     ) external payable {
         require(_goalAmount > 0, "Goal must be positive");
         require(_duration > 0, "Duration must be positive");
         require(_withdrawalDate > block.timestamp, "Withdrawal date must be in future");
         require(_dueDay >= 1 && _dueDay <= 31, "Due day must be 1-31");
+<<<<<<< HEAD
+=======
+        require(bytes(_greenfieldObjectId).length > 0, "Greenfield object required");
+        require(bytes(_greenfieldMetadataHash).length > 0, "Metadata hash required");
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
 
         unchecked {
             _groupIds++;
@@ -109,6 +140,11 @@ contract Concordia is Ownable, ReentrancyGuard {
             withdrawalDate: _withdrawalDate,
             creator: msg.sender,
             isActive: true,
+<<<<<<< HEAD
+=======
+            greenfieldObjectId: _greenfieldObjectId,
+            greenfieldMetadataHash: _greenfieldMetadataHash,
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
             createdAt: block.timestamp,
             totalContributions: 0,
             memberCount: 1
@@ -132,7 +168,13 @@ contract Concordia is Ownable, ReentrancyGuard {
             _description,
             _goalAmount,
             _duration,
+<<<<<<< HEAD
             _withdrawalDate
+=======
+            _withdrawalDate,
+            _greenfieldObjectId,
+            _greenfieldMetadataHash
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         );
     }
 
@@ -158,6 +200,7 @@ contract Concordia is Ownable, ReentrancyGuard {
         emit JoinedGroup(groupId, msg.sender, nickname);
     }
 
+<<<<<<< HEAD
     function contribute(uint256 groupId) external payable nonReentrant onlyGroupMember(groupId) {
         Group storage group = groups[groupId];
         require(group.isActive, "Group inactive");
@@ -240,10 +283,60 @@ contract Concordia is Ownable, ReentrancyGuard {
         require(success, "Transfer failed");
 
         emit EmergencyWithdrawal(groupId, msg.sender, penaltyAmount);
+=======
+    function contribute(uint256 groupId) external payable nonReentrant onlyGroupMember(groupId) groupExists(groupId) {
+        Group storage group = groups[groupId];
+        require(group.isActive, "Inactive group");
+        require(msg.value > 0, "No ETH sent");
+
+        Member storage member = groupMembers[groupId][msg.sender];
+        member.contribution += msg.value;
+        groupBalance[groupId] += msg.value;
+        group.totalContributions++;
+
+        // Bonus aura if contributed early
+        uint256 today = (block.timestamp / 86400) % 30 + 1;
+        bool isEarly = today <= group.dueDay;
+        uint256 auraEarned = isEarly ? 10 : 5;
+        member.auraPoints += auraEarned;
+
+        // Store contribution details
+        Contribution memory newContribution = Contribution({
+            contributor: msg.sender,
+            amount: msg.value,
+            timestamp: block.timestamp,
+            auraPoints: auraEarned,
+            isEarly: isEarly,
+            transactionHash: ""
+        });
+        
+        groupContributions[groupId].push(newContribution);
+
+        emit Contributed(groupId, msg.sender, msg.value, auraEarned, isEarly, "");
+    }
+
+    function voteForWithdrawal(uint256 groupId) external onlyGroupMember(groupId) groupExists(groupId) {
+        require(groups[groupId].isActive, "Inactive group");
+
+        Member storage member = groupMembers[groupId][msg.sender];
+        require(!member.hasVoted, "Already voted");
+        member.hasVoted = true;
+
+        // Check if all members voted
+        address[] memory members = memberList[groupId];
+        for (uint256 i = 0; i < members.length; i++) {
+            if (!groupMembers[groupId][members[i]].hasVoted) {
+                return;
+            }
+        }
+
+        _executeWithdrawal(groupId);
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     }
 
     function _executeWithdrawal(uint256 groupId) private {
         Group storage group = groups[groupId];
+<<<<<<< HEAD
         uint256 totalAmount = groupBalance[groupId];
         
         group.isActive = false;
@@ -265,6 +358,58 @@ contract Concordia is Ownable, ReentrancyGuard {
     // View functions
     function getGroupDetails(uint256 groupId) external view returns (Group memory) {
         require(groups[groupId].id != 0, "Group does not exist");
+=======
+        group.isActive = false;
+
+        uint256 balance = groupBalance[groupId];
+        address[] memory members = memberList[groupId];
+        uint256 share = balance / members.length;
+
+        for (uint256 i = 0; i < members.length; i++) {
+            payable(members[i]).transfer(share);
+        }
+
+        emit WithdrawalExecuted(groupId, balance);
+    }
+
+    function emergencyWithdrawal(uint256 groupId) external onlyGroupCreator(groupId) groupExists(groupId) {
+        Group storage group = groups[groupId];
+        require(group.isActive, "Already withdrawn");
+        group.isActive = false;
+
+        uint256 balance = groupBalance[groupId];
+        uint256 penalty = (balance * 10) / 100;
+        uint256 withdrawable = balance - penalty;
+
+        payable(msg.sender).transfer(withdrawable);
+        emit EmergencyWithdrawal(groupId, msg.sender, penalty);
+    }
+
+    function updateGreenfieldObject(uint256 groupId, string memory newObjectId, string memory newMetadataHash) 
+        external onlyGroupCreator(groupId) groupExists(groupId) {
+        require(bytes(newObjectId).length > 0, "Empty object ID");
+        require(bytes(newMetadataHash).length > 0, "Empty metadata hash");
+        
+        groups[groupId].greenfieldObjectId = newObjectId;
+        groups[groupId].greenfieldMetadataHash = newMetadataHash;
+
+        emit GreenfieldObjectUpdated(groupId, newObjectId, newMetadataHash);
+    }
+
+    function updateGroupMetadata(uint256 groupId, string memory metadataHash) 
+        external onlyGroupCreator(groupId) groupExists(groupId) {
+        require(bytes(metadataHash).length > 0, "Empty metadata hash");
+        
+        groups[groupId].greenfieldMetadataHash = metadataHash;
+        groupMetadataHashes[groupId] = metadataHash;
+
+        emit GroupMetadataUpdated(groupId, metadataHash);
+    }
+
+    // View Functions
+
+    function getGroupDetails(uint256 groupId) external view returns (Group memory) {
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         return groups[groupId];
     }
 
@@ -280,6 +425,13 @@ contract Concordia is Ownable, ReentrancyGuard {
         return groupContributions[groupId];
     }
 
+<<<<<<< HEAD
+=======
+    function getGroupMetadataHash(uint256 groupId) external view returns (string memory) {
+        return groupMetadataHashes[groupId];
+    }
+
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     function getGroupBalance(uint256 groupId) external view returns (uint256) {
         return groupBalance[groupId];
     }
@@ -296,6 +448,7 @@ contract Concordia is Ownable, ReentrancyGuard {
         return groupMembers[groupId][user].isMember;
     }
 
+<<<<<<< HEAD
     // Owner functions
     function withdrawStuckFunds() external onlyOwner {
         uint256 balance = address(this).balance;
@@ -306,5 +459,12 @@ contract Concordia is Ownable, ReentrancyGuard {
     }
 
     // Receive function
+=======
+    // Admin fallback
+    function withdrawStuckFunds() external onlyOwner {
+        payable(owner()).transfer(address(this).balance);
+    }
+
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
     receive() external payable {}
 }

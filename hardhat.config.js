@@ -13,6 +13,7 @@ module.exports = {
     },
   },
   networks: {
+<<<<<<< HEAD
     opBNBTestnet: {
       url: "https://opbnb-testnet-rpc.bnbchain.org",
       accounts: ["87117ab7b5bedc4ff6487fde37c54b025ba0478f64a8e167bfde4e7b827d09d4"],
@@ -21,6 +22,11 @@ module.exports = {
     opbnbTestnet: {
       url: "https://opbnb-testnet-rpc.bnbchain.org",
       accounts: ["87117ab7b5bedc4ff6487fde37c54b025ba0478f64a8e167bfde4e7b827d09d4"],
+=======
+    opbnbTestnet: {
+      url: "https://opbnb-testnet-rpc.bnbchain.org",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+>>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
       chainId: 5611,
     },
   },
