@@ -21,6 +21,7 @@ export async function GET() {
   } catch (error) {
     console.error('❌ Admin: Error fetching users:', error)
     return NextResponse.json({
+      success: false,
       error: 'Failed to fetch users',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
@@ -32,7 +33,10 @@ export async function POST(request: Request) {
     const { walletAddress, nickname } = await request.json()
     
     if (!walletAddress) {
-      return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
+      return NextResponse.json({ 
+        success: false,
+        error: 'Wallet address is required' 
+      }, { status: 400 })
     }
 
     console.log('📝 Admin: Creating new user:', walletAddress)
@@ -53,8 +57,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('❌ Admin: Error creating user:', error)
     return NextResponse.json({
+      success: false,
       error: 'Failed to create user',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
-} 
+}

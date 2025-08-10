@@ -47,6 +47,7 @@ export async function GET() {
   } catch (error) {
     console.error('❌ Admin: Error fetching system stats:', error)
     return NextResponse.json({
+      success: false,
       error: 'Failed to fetch system statistics',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
@@ -76,8 +77,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('❌ Admin: Error updating system stats:', error)
     return NextResponse.json({
+      success: false,
       error: 'Failed to update system statistics',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
-} 
+}

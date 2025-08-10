@@ -43,10 +43,10 @@ class ApiClient {
   }
 
   // Group Management
-  async storeGroup(groupId: string, groupData: any) {
-    return this.request("/groups/store", {
+  async createGroup(groupData: any) {
+    return this.request("/groups", {
       method: "POST",
-      body: JSON.stringify({ groupId, groupData }),
+      body: JSON.stringify(groupData),
     })
   }
 
@@ -57,46 +57,77 @@ class ApiClient {
   async updateGroup(groupId: string, updateData: any) {
     return this.request(`/groups/${groupId}`, {
       method: "PUT",
-      body: JSON.stringify({ updateData }),
+      body: JSON.stringify(updateData),
     })
   }
 
   // Contribution Management
-  async storeContribution(groupId: string, contributionData: any) {
-    return this.request("/contributions/store", {
+  async addContribution(groupId: string, contributionData: any) {
+    return this.request(`/groups/${groupId}/contributions`, {
       method: "POST",
-      body: JSON.stringify({ groupId, contributionData }),
+      body: JSON.stringify(contributionData),
     })
   }
 
   async getContributions(groupId: string) {
-    return this.request(`/contributions/${groupId}`)
+    return this.request(`/groups/${groupId}/contributions`)
   }
 
   // Invite Management
-  async storeInvite(groupId: string, inviteData: any) {
-    return this.request("/invites/store", {
+  async generateInvite(groupId: string) {
+    return this.request(`/groups/${groupId}/invite`, {
       method: "POST",
-      body: JSON.stringify({ groupId, inviteData }),
+      body: JSON.stringify({ groupId }),
     })
   }
 
-  async getInvites(groupId: string) {
-    return this.request(`/invites/${groupId}`)
+  async joinWithInvite(inviteCode: string, userAddress: string) {
+    return this.request(`/groups/join`, {
+      method: "POST",
+      body: JSON.stringify({ inviteCode, userAddress }),
+    })
   }
 
-  // Blockchain Integration
-  async getBlockchainGroup(groupId: string) {
-    return this.request(`/blockchain/groups/${groupId}`)
+  // User Management
+  async getUserProfile(address: string) {
+    return this.request(`/users/${address}`)
+  }
+
+  async updateUserProfile(address: string, userData: any) {
+    return this.request(`/users/${address}`, {
+      method: "PUT",
+      body: JSON.stringify(userData),
+    })
   }
 
   async getUserGroups(address: string) {
-    return this.request(`/blockchain/users/${address}/groups`)
+    return this.request(`/users/${address}/groups`)
   }
 
-  // Analytics
-  async getAnalytics(groupId: string) {
-    return this.request(`/analytics/${groupId}`)
+  async updateUserAuraPoints(address: string, operation: 'add' | 'subtract' | 'set', amount: number) {
+    return this.request(`/users/${address}/aura`, {
+      method: "PUT",
+      body: JSON.stringify({ operation, amount }),
+    })
+  }
+
+  // Aura Rewards
+  async getUserAuraRewards(userId: string) {
+    return this.request(`/aura/${userId}`)
+  }
+
+  async createAuraReward(rewardData: any) {
+    return this.request(`/aura`, {
+      method: "POST",
+      body: JSON.stringify(rewardData),
+    })
+  }
+
+  async updateAuraRewardStatus(rewardId: string, status: string, transactionHash?: string) {
+    return this.request(`/aura/${rewardId}`, {
+      method: "PUT",
+      body: JSON.stringify({ status, transactionHash }),
+    })
   }
 
   // File Upload
@@ -121,26 +152,26 @@ export const apiClient = new ApiClient()
 
 // Utility functions for common operations
 export const groupApi = {
-  create: (groupId: string, data: any) => apiClient.storeGroup(groupId, data),
+  create: (data: any) => apiClient.createGroup(data),
   get: (groupId: string) => apiClient.getGroup(groupId),
   update: (groupId: string, data: any) => apiClient.updateGroup(groupId, data),
-  getBlockchainData: (groupId: string) => apiClient.getBlockchainGroup(groupId),
-}
-
-export const contributionApi = {
-  store: (groupId: string, data: any) => apiClient.storeContribution(groupId, data),
-  getAll: (groupId: string) => apiClient.getContributions(groupId),
-}
-
-export const inviteApi = {
-  send: (groupId: string, data: any) => apiClient.storeInvite(groupId, data),
-  getAll: (groupId: string) => apiClient.getInvites(groupId),
+  addContribution: (groupId: string, data: any) => apiClient.addContribution(groupId, data),
+  getContributions: (groupId: string) => apiClient.getContributions(groupId),
+  generateInvite: (groupId: string) => apiClient.generateInvite(groupId),
+  joinWithInvite: (inviteCode: string, userAddress: string) => apiClient.joinWithInvite(inviteCode, userAddress),
 }
 
 export const userApi = {
+  getProfile: (address: string) => apiClient.getUserProfile(address),
+  updateProfile: (address: string, data: any) => apiClient.updateUserProfile(address, data),
   getGroups: (address: string) => apiClient.getUserGroups(address),
+  updateAuraPoints: (address: string, operation: 'add' | 'subtract' | 'set', amount: number) => 
+    apiClient.updateUserAuraPoints(address, operation, amount),
 }
 
-export const analyticsApi = {
-  get: (groupId: string) => apiClient.getAnalytics(groupId),
+export const auraApi = {
+  getRewards: (userId: string) => apiClient.getUserAuraRewards(userId),
+  createReward: (rewardData: any) => apiClient.createAuraReward(rewardData),
+  updateRewardStatus: (rewardId: string, status: string, transactionHash?: string) => 
+    apiClient.updateAuraRewardStatus(rewardId, status, transactionHash),
 }

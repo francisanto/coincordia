@@ -335,7 +335,7 @@ GREENFIELD_ACCOUNT_ADDRESS=${process.env.GREENFIELD_ACCOUNT_ADDRESS || ""}
 
 # Backend Configuration
 PORT=${process.env.PORT || 3001}
-FRONTEND_URL=${process.env.FRONTEND_URL || "http://localhost:3000"}
+FRONTEND_URL=${process.env.FRONTEND_URL}
 `
 
     const envPath = path.join(__dirname, ".env.deployment")

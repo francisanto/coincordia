@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GreenfieldService } from '@/lib/greenfield-service';
-
-const greenfieldService = new GreenfieldService();
 
 export async function DELETE(
   request: NextRequest,
@@ -9,27 +6,37 @@ export async function DELETE(
 ) {
   try {
     const { groupId } = params;
-    console.log('🗑️ Deleting group data from Greenfield:', groupId);
+    console.log('🗑️ Deleting group from MongoDB:', groupId);
 
-    const result = await greenfieldService.deleteGroupData(groupId);
-
+    // Delete group from MongoDB API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${apiUrl}/groups/${groupId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to delete group: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Failed to delete group data' },
-        { status: 500 }
-      );
+      throw new Error(result.error || 'Failed to delete group');
     }
 
-    console.log('✅ Group data deleted successfully:', groupId);
+    console.log('✅ Group deleted successfully from MongoDB:', groupId);
     return NextResponse.json({
       success: true,
       message: 'Group deleted successfully',
     });
   } catch (error) {
-    console.error('❌ Error deleting group data:', error);
+    console.error('❌ Error deleting group:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }
-} 
+}

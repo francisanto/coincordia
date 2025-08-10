@@ -1,28 +1,6 @@
 import { NextResponse } from 'next/server'
-import { Client } from '@bnb-chain/greenfield-js-sdk'
 
-const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
-
-const GREENFIELD_CONFIG = {
-  endpoint: process.env.GREENFIELD_ENDPOINT || 'https://gnfd-testnet-sp1.bnbchain.org',
-  chainId: parseInt(process.env.GREENFIELD_CHAIN_ID || '5600'),
-  bucketName: process.env.GREENFIELD_BUCKET || '0x000000000000000000000000000000000000000000000000000000000000566f',
-}
-
-let greenfieldClient: any = null
-
-async function initGreenfield() {
-  if (!greenfieldClient) {
-    try {
-      greenfieldClient = Client.create(GREENFIELD_CONFIG.endpoint, String(GREENFIELD_CONFIG.chainId))
-      console.log('✅ Greenfield client initialized for access check')
-    } catch (error) {
-      console.error('❌ Failed to initialize Greenfield client:', error)
-      throw error
-    }
-  }
-  return greenfieldClient
-}
+const ADMIN_WALLET = process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 export async function GET(request: Request, { params }: { params: { groupId: string } }) {
   try {
@@ -41,35 +19,52 @@ export async function GET(request: Request, { params }: { params: { groupId: str
       }, { status: 400 })
     }
 
-    const client = await initGreenfield()
+    // Check if user is admin
+    const isAdmin = userAddress.toLowerCase() === ADMIN_WALLET.toLowerCase()
+    
+    if (isAdmin) {
+      return NextResponse.json({
+        canRead: true,
+        canWrite: true,
+        isCreator: true,
+        isMember: true,
+        isAdmin: true,
+        groupId: groupId,
+        userAddress: userAddress,
+      })
+    }
 
     // Get group data to check membership
     try {
-      const groupBucketName = `concordia-group-${groupId.toLowerCase()}`
-
-      // Try to get group data from the group's bucket
-      const groupObjectData = await client.object.downloadFile({
-        bucketName: groupBucketName,
-        objectName: `groups/${groupId}/data.json`,
-      })
-
-      const groupData = JSON.parse(groupObjectData.toString())
-
-      // Check if user is admin
-      const isAdmin = userAddress.toLowerCase() === ADMIN_WALLET.toLowerCase()
-
-      // Check if user is member or creator of the group
-      const isMember = groupData.members?.some((member: any) => 
+      // Fetch group data from MongoDB API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      const response = await fetch(`${apiUrl}/groups/${groupId}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch group data: ${response.statusText}`)
+      }
+      
+      const groupData = await response.json()
+      
+      if (!groupData.success || !groupData.data) {
+        throw new Error('Group not found')
+      }
+      
+      const group = groupData.data
+      
+      // Check if user is creator
+      const isCreator = group.createdBy?.toLowerCase() === userAddress.toLowerCase()
+      
+      // Check if user is a member
+      const isMember = group.members?.some((member: any) => 
         member.address?.toLowerCase() === userAddress.toLowerCase()
-      )
-      const isCreator = groupData.creator?.toLowerCase() === userAddress.toLowerCase()
-
+      ) || isCreator
+      // Determine access levels
       return NextResponse.json({
-        canRead: isMember || isCreator || isAdmin,
-        canWrite: isMember || isCreator || isAdmin,
+        canRead: isCreator || isMember,
+        canWrite: isCreator,
         isCreator: isCreator,
-        isAdmin: isAdmin,
-        isMember: isMember, // Added isMember to the response
+        isMember: isMember,
         groupId: groupId,
         userAddress: userAddress,
       })
@@ -84,7 +79,7 @@ export async function GET(request: Request, { params }: { params: { groupId: str
         isCreator: false,
         isMember: false,
         error: 'Group not found or access denied',
-      })
+      }, { status: 404 })
     }
 
   } catch (error) {

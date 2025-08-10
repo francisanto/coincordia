@@ -1,34 +1,10 @@
 import { NextResponse } from 'next/server'
-import { Client } from '@bnb-chain/greenfield-js-sdk'
 
-const GREENFIELD_CONFIG = {
-  endpoint: process.env.GREENFIELD_ENDPOINT || "https://gnfd-testnet-sp1.bnbchain.org",
-  chainId: process.env.GREENFIELD_CHAIN_ID || 5600,
-  bucketName: process.env.GREENFIELD_BUCKET || "concordia-data",
-}
-
-const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
-
-let greenfieldClient: any = null
-
-async function initGreenfield() {
-  if (!greenfieldClient) {
-    try {
-      greenfieldClient = Client.create(GREENFIELD_CONFIG.endpoint, String(GREENFIELD_CONFIG.chainId))
-      console.log('✅ Greenfield client initialized')
-    } catch (error) {
-      console.error('❌ Failed to initialize Greenfield client:', error)
-      throw error
-    }
-  }
-  return greenfieldClient
-}
+const ADMIN_WALLET = process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 export async function GET(request: Request) {
   try {
-    console.log('📥 GET /api/groups - Fetching groups from BNB Greenfield')
-    
-    const client = await initGreenfield()
+    console.log('📥 GET /api/groups - Fetching groups from MongoDB')
     
     // Get user address from request headers or query parameters
     const url = new URL(request.url)
@@ -37,41 +13,38 @@ export async function GET(request: Request) {
     
     console.log('👤 Request from user:', userAddress, 'Admin access:', isAdmin)
     
-    // List all objects in the groups folder
-    const listObjectsResponse = await client.object.listObjects({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      prefix: "groups/",
-      maxKeys: 1000,
-    })
-
-    console.log('📊 Found objects in Greenfield:', listObjectsResponse.objects?.length || 0)
-
-    if (!listObjectsResponse.objects || listObjectsResponse.objects.length === 0) {
-      console.log('📭 No groups found in Greenfield')
-      return NextResponse.json({
-        success: true,
-        groups: []
-      })
+    // Fetch groups from MongoDB API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    let endpoint = `${apiUrl}/groups`
+    
+    if (userAddress) {
+      endpoint = `${apiUrl}/users/${userAddress}/groups`
     }
-
-    // Fetch all group data
-    const groups = []
-    for (const object of listObjectsResponse.objects) {
-      try {
-        console.log('📥 Fetching group:', object.objectName)
-        const objectData = await client.object.downloadFile({
-          bucketName: GREENFIELD_CONFIG.bucketName,
-          objectName: object.objectName,
-        })
-        const groupData = JSON.parse(objectData.toString())
-        groups.push(groupData)
-        console.log('✅ Group loaded:', groupData.groupId)
-      } catch (error) {
-        console.error(`❌ Error fetching group ${object.objectName}:`, error instanceof Error ? error.message : error)
+    
+    let groups = []
+    
+    try {
+      const response = await fetch(endpoint)
+      
+      if (!response.ok) {
+        console.error(`⚠️ Error fetching groups: ${response.statusText}`)
+        // Continue with empty groups array instead of throwing
+      } else {
+        const result = await response.json()
+        
+        if (result.success) {
+          groups = result.groups || result.data || []
+        } else {
+          console.error(`⚠️ API returned error: ${result.error || 'Unknown error'}`)
+          // Continue with empty groups array
+        }
       }
+    } catch (fetchError) {
+      console.error('❌ Error fetching groups:', fetchError)
+      // Continue with empty groups array instead of throwing
     }
-
-    console.log('✅ Successfully loaded groups from BNB Greenfield:', groups.length)
+    
+    console.log('📊 Found groups in MongoDB:', groups.length)
     
     // Filter groups based on user access
     let accessibleGroups = groups
@@ -86,21 +59,6 @@ export async function GET(request: Request) {
         return isCreator || isMember
       })
       console.log('🔒 Filtered groups for user access:', accessibleGroups.length)
-      
-      // Store user data in database for admin tracking
-      if (accessibleGroups.length > 0) {
-        try {
-          const userStats = accessibleGroups.reduce((acc, group) => ({
-            totalContributed: acc.totalContributed + (group.currentAmount || 0),
-            totalAura: acc.totalAura + (group.members?.find((m: any) => m.address?.toLowerCase() === userAddress)?.auraPoints || 0)
-          }), { totalContributed: 0, totalAura: 0 })
-          
-          // This would be stored in admin database but not exposed to regular users
-          console.log('📊 User stats calculated for admin:', userStats)
-        } catch (error) {
-          console.log('⚠️ Error calculating user stats:', error)
-        }
-      }
     } else if (isAdmin) {
       console.log('👑 Admin access granted - returning all groups')
     } else {
@@ -111,13 +69,13 @@ export async function GET(request: Request) {
     
     return NextResponse.json({
       success: true,
-      groups: accessibleGroups,
+      groups: accessibleGroups
     })
   } catch (error) {
-    console.error("❌ Error retrieving groups from BNB Greenfield:", error instanceof Error ? error.message : error)
+    console.error("❌ Error fetching groups:", error instanceof Error ? error.message : error)
     return NextResponse.json({
-      error: "Failed to retrieve groups from BNB Greenfield",
-      details: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }
@@ -127,13 +85,13 @@ export async function POST(request: Request) {
     const { groupId, groupData } = await request.json()
     
     if (!groupId || !groupData) {
-      return NextResponse.json({ error: "Group ID and data are required" }, { status: 400 })
+      return NextResponse.json({ 
+        success: false, 
+        error: "Group ID and data are required" 
+      }, { status: 400 })
     }
 
-    console.log('📤 POST /api/groups - Storing group in BNB Greenfield:', groupId)
-    
-    const client = await initGreenfield()
-    const objectName = `groups/group_${groupId}.json`
+    console.log('📤 POST /api/groups - Creating new group in MongoDB:', groupId)
     
     // Generate invite code
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -142,7 +100,7 @@ export async function POST(request: Request) {
       inviteCode += chars.charAt(Math.floor(Math.random() * chars.length))
     }
 
-    const metadata = {
+    const groupPayload = {
       groupId,
       ...groupData,
       inviteCode,
@@ -150,33 +108,49 @@ export async function POST(request: Request) {
       version: "1.0",
     }
 
-    console.log('💾 Storing group data in BNB Greenfield...')
+    console.log('💾 Storing group data in MongoDB...')
 
-    // Store in BNB Greenfield
-    const createObjectTx = await client.object.createObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      creator: process.env.GREENFIELD_ACCOUNT_ADDRESS || "0x0000000000000000000000000000000000000000",
-      visibility: "VISIBILITY_TYPE_PUBLIC_READ",
-      contentType: "application/json",
-      redundancyType: "REDUNDANCY_EC_TYPE",
-      payload: Buffer.from(JSON.stringify(metadata)),
+    // Store in MongoDB API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    const response = await fetch(`${apiUrl}/groups`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(groupPayload)
     })
+    
+    if (!response.ok && response.status !== 409) { // Allow 409 Conflict status
+      throw new Error(`Failed to create group: ${response.statusText}`)
+    }
+    
+    const result = await response.json()
+    
+    // If the group already exists but was returned successfully
+    if (result.message && result.message.includes('already exists')) {
+      console.log('⚠️ Group already exists, using existing group:', groupId)
+      return NextResponse.json({
+        success: true,
+        group: result.group,
+        message: 'Using existing group'
+      })
+    }
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create group')
+    }
 
-    console.log('✅ Group stored successfully in BNB Greenfield:', groupId)
-    console.log('🔗 Transaction hash:', createObjectTx.transactionHash)
+    console.log('✅ Group stored successfully in MongoDB:', groupId)
 
     return NextResponse.json({
       success: true,
-      objectName,
-      transactionHash: createObjectTx.transactionHash,
-      metadata,
+      group: result.data || result.group
     })
   } catch (error) {
-    console.error("❌ Error storing group data in BNB Greenfield:", error instanceof Error ? error.message : error)
+    console.error("❌ Error creating group in MongoDB:", error instanceof Error ? error.message : error)
     return NextResponse.json({
-      error: "Failed to store group data in BNB Greenfield",
-      details: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }

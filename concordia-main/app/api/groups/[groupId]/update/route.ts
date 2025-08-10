@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GreenfieldService } from '@/lib/greenfield-service';
-
-const greenfieldService = new GreenfieldService();
 
 export async function PUT(
   request: NextRequest,
@@ -11,27 +8,41 @@ export async function PUT(
     const { groupId } = params;
     const { updates } = await request.json();
 
-    console.log('🔄 Updating group metadata in Greenfield:', { groupId, updates });
+    console.log('🔄 Updating group in MongoDB:', { groupId, updates });
 
-    const result = await greenfieldService.updateGroupMetadata(groupId, updates);
-
+    // Update group in MongoDB API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const response = await fetch(`${apiUrl}/groups/${groupId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updates)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update group: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Failed to update group metadata' },
-        { status: 500 }
-      );
+      throw new Error(result.error || 'Failed to update group');
     }
 
-    console.log('✅ Group metadata updated successfully:', groupId);
+    console.log('✅ Group updated successfully in MongoDB:', groupId);
     return NextResponse.json({
       success: true,
-      metadataHash: result.metadataHash,
+      group: result.data
     });
   } catch (error) {
-    console.error('❌ Error updating group metadata:', error);
+    console.error('❌ Error updating group:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }
-} 
+}

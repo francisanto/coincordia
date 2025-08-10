@@ -1,27 +1,6 @@
 import { NextResponse } from 'next/server'
-import { Client } from '@bnb-chain/greenfield-js-sdk'
 
-const GREENFIELD_CONFIG = {
-  endpoint: process.env.GREENFIELD_ENDPOINT || "https://gnfd-testnet-sp1.bnbchain.org",
-  chainId: process.env.GREENFIELD_CHAIN_ID || 5600,
-  bucketName: process.env.GREENFIELD_BUCKET || "concordia-data",
-  adminAddress: process.env.ADMIN_ADDRESS || "0x0000000000000000000000000000000000000000", // Admin wallet address
-}
-
-let greenfieldClient: any = null
-
-async function initGreenfield() {
-  if (!greenfieldClient) {
-    try {
-      greenfieldClient = Client.create(GREENFIELD_CONFIG.endpoint, String(GREENFIELD_CONFIG.chainId))
-      console.log('✅ Greenfield client initialized')
-    } catch (error) {
-      console.error('❌ Failed to initialize Greenfield client:', error)
-      throw error
-    }
-  }
-  return greenfieldClient
-}
+const ADMIN_WALLET = process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 export async function GET(
   request: Request,
@@ -29,71 +8,135 @@ export async function GET(
 ) {
   try {
     const { groupId } = params
-    console.log('📥 GET /api/groups/:groupId - Fetching group from BNB Greenfield:', groupId)
+    if (!groupId) {
+      console.error('❌ Missing groupId parameter')
+      return NextResponse.json({
+        success: false,
+        error: 'Missing groupId parameter',
+      }, { status: 400 })
+    }
+    
+    console.log('📥 GET /api/groups/:groupId - Fetching group from MongoDB:', groupId)
     
     // Get user address from request headers or query parameters
     const url = new URL(request.url)
     const userAddress = url.searchParams.get('address')?.toLowerCase()
-    const isAdmin = url.searchParams.get('admin_key') === process.env.ADMIN_API_KEY
+    const isAdmin = userAddress === ADMIN_WALLET.toLowerCase() || url.searchParams.get('admin_key') === process.env.ADMIN_API_KEY
     
     console.log('👤 Request from user:', userAddress, 'Admin access:', isAdmin)
     
-    const client = await initGreenfield()
-    const objectName = `groups/group_${groupId}.json`
-
+    // Fetch group from MongoDB API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    
+    let groupData = null
+    let fetchError = null
+    
     try {
-      // Download object content
-      const objectData = await client.object.downloadFile({
-        bucketName: GREENFIELD_CONFIG.bucketName,
-        objectName: objectName,
-      })
-
-      const metadata = JSON.parse(objectData.toString())
-      console.log('✅ Group loaded successfully:', groupId)
+      // Add timeout to fetch request to prevent hanging
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      const response = await fetch(`${apiUrl}/groups/${groupId}`, {
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeoutId))
+      
+      if (!response.ok) {
+        fetchError = `Failed to fetch group: ${response.status} ${response.statusText}`
+        console.error(`❌ ${fetchError}`)
+      } else {
+        try {
+          const result = await response.json()
+          
+          if (!result.success) {
+            fetchError = result.error || 'Failed to fetch group'
+            console.error(`❌ ${fetchError}`)
+          } else {
+            groupData = result.data || result.group
+            if (!groupData) {
+              fetchError = 'Group data is empty'
+              console.error(`❌ ${fetchError}`)
+            } else {
+              console.log('✅ Group loaded successfully:', groupId)
+            }
+          }
+        } catch (parseError) {
+          fetchError = `Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+          console.error(`❌ ${fetchError}`)
+        }
+      }
+    } catch (error) {
+      fetchError = error instanceof Error ? 
+        (error.name === 'AbortError' ? 'Request timed out' : error.message) : 
+        'Unknown error fetching group'
+      console.error(`❌ Error fetching group: ${fetchError}`)
+    }
+    
+    if (!groupData) {
+      return NextResponse.json({
+        success: false,
+        error: fetchError || 'Failed to fetch group',
+        groupId: groupId,
+      }, { status: 404 })
+    }
       
       // Check if user has access to this group
-      if (!isAdmin && userAddress) {
-        const isCreator = metadata.creator?.toLowerCase() === userAddress
-        const isMember = metadata.members?.some((member: any) => 
-          member.address?.toLowerCase() === userAddress
-        )
-        
-        if (!isCreator && !isMember) {
-          console.log('🔒 Access denied for user:', userAddress, 'to group:', groupId)
+      try {
+        if (!isAdmin && userAddress) {
+          // Safely check if creator exists and matches
+          const isCreator = groupData.creator && groupData.creator.toLowerCase() === userAddress
+          
+          // Safely check if user is a member
+          const isMember = Array.isArray(groupData.members) && groupData.members.some((member: any) => 
+            member && member.address && member.address.toLowerCase() === userAddress
+          )
+          
+          if (!isCreator && !isMember) {
+            console.log('🔒 Access denied for user:', userAddress, 'to group:', groupId)
+            return NextResponse.json({
+              success: false,
+              error: `Access denied to group: ${groupId}`,
+              details: 'You are not a member of this group',
+              groupId: groupId,
+            }, { status: 403 })
+          }
+          
+          console.log('✅ Access granted for user:', userAddress, 'to group:', groupId)
+        } else if (isAdmin) {
+          console.log('👑 Admin access granted to group:', groupId)
+        } else {
+          // If no user address and not admin, deny access
+          console.log('⚠️ No user address or admin key provided - access denied')
           return NextResponse.json({
+            success: false,
             error: `Access denied to group: ${groupId}`,
-            details: 'You are not a member of this group',
-          }, { status: 403 })
+            details: 'Authentication required',
+            groupId: groupId,
+          }, { status: 401 })
         }
-        
-        console.log('✅ Access granted for user:', userAddress, 'to group:', groupId)
-      } else if (isAdmin) {
-        console.log('👑 Admin access granted to group:', groupId)
-      } else {
-        // If no user address and not admin, deny access
-        console.log('⚠️ No user address or admin key provided - access denied')
+      } catch (accessError) {
+        console.error(`❌ Error checking access permissions: ${accessError instanceof Error ? accessError.message : accessError}`)
         return NextResponse.json({
-          error: `Access denied to group: ${groupId}`,
-          details: 'Authentication required',
-        }, { status: 401 })
+          success: false,
+          error: 'Error checking access permissions',
+          details: accessError instanceof Error ? accessError.message : 'Unknown error',
+          groupId: groupId,
+        }, { status: 500 })
       }
 
       return NextResponse.json({
         success: true,
-        metadata,
+        metadata: groupData,
+        groupId: groupId
       })
-    } catch (error) {
-      console.error(`❌ Error fetching group ${groupId}:`, error instanceof Error ? error.message : error)
-      return NextResponse.json({
-        error: `Group not found: ${groupId}`,
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }, { status: 404 })
-    }
   } catch (error) {
-    console.error("❌ Error retrieving group from BNB Greenfield:", error instanceof Error ? error.message : error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`❌ Error fetching group ${params.groupId || 'unknown'}:`, errorMessage)
+    
     return NextResponse.json({
-      error: "Failed to retrieve group from BNB Greenfield",
-      details: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      error: errorMessage,
+      groupId: params.groupId || 'unknown',
+      timestamp: new Date().toISOString(),
     }, { status: 500 })
   }
 }

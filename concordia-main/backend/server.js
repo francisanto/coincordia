@@ -1,12 +1,16 @@
 const express = require("express")
 const cors = require("cors")
-const { Client } = require("@bnb-chain/greenfield-js-sdk")
 const { ethers } = require("ethers")
 const multer = require("multer")
 const crypto = require("crypto")
 require("dotenv").config()
 const nodemailer = require("nodemailer");
 const { OpenAI } = require("openai");
+const { connectDB } = require("./db");
+const Group = require("./models/Group");
+const Invite = require("./models/Invite");
+const User = require("./models/User");
+const AuraReward = require("./models/AuraReward");
 
 const app = express()
 const PORT = process.env.PORT || 3002
@@ -27,26 +31,43 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 })
 
-// BNB Greenfield Configuration
-const GREENFIELD_CONFIG = {
-  endpoint: process.env.GREENFIELD_ENDPOINT || "https://gnfd-testnet-sp1.bnbchain.org",
-  chainId: process.env.GREENFIELD_CHAIN_ID || 5600,
-  bucketName: process.env.GREENFIELD_BUCKET || "concordia-data",
+// MongoDB Configuration
+const MONGODB_CONFIG = {
   adminAddress: process.env.ADMIN_ADDRESS || "0x0000000000000000000000000000000000000000", // Admin wallet address for access control
 }
 
-// Initialize Greenfield Client
-let greenfieldClient
-
-async function initializeGreenfield() {
+// Initialize MongoDB Connection
+async function initializeDatabase() {
   try {
-    greenfieldClient = Client.create(GREENFIELD_CONFIG.endpoint, String(GREENFIELD_CONFIG.chainId))
-    console.log("✅ Greenfield client initialized")
-
-    // Create bucket if it doesn't exist
-    await createBucketIfNotExists()
+    const connected = await connectDB();
+    if (connected) {
+      console.log("✅ MongoDB database initialized");
+      
+      // Create admin user if it doesn't exist
+      await createAdminUserIfNotExists();
+    }
   } catch (error) {
-    console.error("❌ Failed to initialize Greenfield:", error)
+    console.error("❌ Failed to initialize MongoDB:", error);
+  }
+}
+
+// Create admin user if it doesn't exist
+async function createAdminUserIfNotExists() {
+  try {
+    const adminExists = await User.findOne({ address: MONGODB_CONFIG.adminAddress });
+    
+    if (!adminExists) {
+      await User.create({
+        address: MONGODB_CONFIG.adminAddress,
+        nickname: "Admin",
+        isAdmin: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      console.log("✅ Admin user created");
+    }
+  } catch (error) {
+    console.error("❌ Failed to create admin user:", error);
   }
 }
 
@@ -193,6 +214,18 @@ app.get("/api/health", (req, res) => {
     },
   })
 })
+
+// Import routes
+const groupsRoutes = require('./routes/groups');
+const usersRoutes = require('./routes/users');
+const auraRoutes = require('./routes/aura');
+const bucketsRoutes = require('./routes/buckets');
+
+// Use routes
+app.use('/api/groups', groupsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/aura', auraRoutes);
+app.use('/api/buckets', bucketsRoutes);
 
 /**
  * Store Group Data in Greenfield
@@ -946,11 +979,11 @@ app.use((req, res) => {
 // Initialize and start server
 async function startServer() {
   try {
-    await initializeGreenfield()
+    await initializeDatabase()
 
     app.listen(PORT, () => {
       console.log(`🚀 Concordia Backend Server running on port ${PORT}`)
-      console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
+      console.log(`📊 Health check: /api/health (port ${PORT})`)
       console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`)
     })
   } catch (error) {
