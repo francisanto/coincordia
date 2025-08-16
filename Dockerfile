@@ -15,9 +15,8 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Use Railway PORT
+# Expose Railway default port
 EXPOSE 3000  
-ENV PORT $PORT
 
-# Start the app
+# Start the app (Railway sets PORT automatically)
 CMD ["npm", "start"]
