@@ -4,11 +4,13 @@ require('dotenv').config();
 const MONGODB_URI = process.env.MONGODB_URI;
 
 const connectDB = async () => {
+  if (!MONGODB_URI) {
+    console.error('❌ MONGODB_URI is not set in environment variables');
+    process.exit(1);
+  }
+
   try {
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(MONGODB_URI);
     console.log('✅ MongoDB connected successfully');
     return true;
   } catch (error) {

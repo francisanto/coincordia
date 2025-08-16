@@ -1,161 +1,120 @@
-# 🚀 AuraRedemptionNFT Deployment Summary
+# 🚀 Concordia Deployment Summary
 
-## ✅ **Deployment Successful!**
+## ✅ Successfully Deployed to opBNB Testnet
 
-Your NFT-based Aura redemption system has been successfully deployed to the **opBNB Testnet**.
-
-## 📋 **Contract Details**
-
-### **Contract Information**
-- **Contract Address**: `0x338E8AF72E83C131B07162BDd2ACA599D53Ce3e7`
-- **Contract Name**: Aura Redemption Code
-- **Contract Symbol**: AURACODE
+### 📋 Contract Information
+- **Contract Address**: `0xe93ECeA7f56719e60cb03fc1608A5830793D95FF`
 - **Network**: opBNB Testnet (Chain ID: 5611)
-- **Owner**: `0xdA13e8F82C83d14E7aa639354054B7f914cA0998`
-- **Block Explorer**: https://testnet.bscscan.com/address/0x338E8AF72E83C131B07162BDd2ACA599D53Ce3e7
+- **Deployer Address**: `0xdA13e8F82C83d14E7aa639354054B7f914cA0998`
+- **Transaction Hash**: `0x50aa0176de2b23f07beaa0969f9600fcec96bfae644b7e8687b3a430f3826285`
+- **Deployment Date**: 2025-08-10T12:39:06.632Z
 
-### **Tier System**
-| Tier | Name | Aura Points | Rarity |
-|------|------|-------------|--------|
-| 1 | Basic | 100 | Common |
-| 2 | Silver | 250 | Uncommon |
-| 3 | Gold | 500 | Rare |
-| 4 | Platinum | 1000 | Legendary |
+### 🔑 Admin Configuration
+- **Admin Address**: `0xdA13e8F82C83d14E7aa639354054B7f914cA0998`
+- **Admin API Key**: `80378e51250f63ba0746e03add2019001106874edaf28dd6a529a0ae394a94f1`
 
-## 🎁 **Test Redemption Codes**
+### 🌐 Network Configuration
+- **RPC URL**: `https://opbnb-testnet-rpc.bnbchain.org`
+- **Chain ID**: `5611`
+- **Explorer**: `https://testnet.bscscan.com/address/0xe93ECeA7f56719e60cb03fc1608A5830793D95FF`
 
-### **Minted Test Codes**
-These codes have been minted and are ready for testing:
+## 🔧 Environment Variables
 
-1. **DPCBHTMQ** (Tier 1, 100 Aura) - Owner address
-2. **A1T9LDSY** (Tier 2, 250 Aura) - Test address 1
-3. **Q4TOUQAM** (Tier 3, 500 Aura) - Test address 2
-
-### **Sample Codes from Deployment**
-- **O6VLVK2S** (Tier 3, 500 Aura)
-- **AYENR4GR** (Tier 3, 500 Aura)
-- **4ADROSN5** (Tier 3, 500 Aura)
-- **FV2U1S9Z** (Tier 3, 500 Aura)
-- **MV0ARI8K** (Tier 1, 100 Aura)
-
-## 🔧 **Updated Files**
-
-### **Frontend Integration**
-The following files have been updated with the contract address:
-
-1. **`components/aura-redemption-nft.tsx`**
-   - Contract address updated
-   - Ready for testing
-
-2. **`lib/aura-nft-service.ts`**
-   - Contract address updated
-   - Service ready for integration
-
-### **Smart Contract**
-- **`contracts/AuraRedemptionNFT.sol`** - Deployed and verified
-- **`scripts/deploy-aura-nft.js`** - Deployment script
-- **`scripts/test-aura-nft.js`** - Contract testing script
-- **`scripts/mint-test-codes.js`** - Code minting script
-
-## 🧪 **Testing Instructions**
-
-### **1. Test the Contract**
-```bash
-npx hardhat run scripts/test-aura-nft.js --network opbnbTestnet
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xe93ECeA7f56719e60cb03fc1608A5830793D95FF
+NEXT_PUBLIC_NETWORK=opBNB Testnet
+NEXT_PUBLIC_RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
+NEXT_PUBLIC_CHAIN_ID=5611
+NEXT_PUBLIC_API_URL=https://your-backend-domain.railway.app
 ```
 
-### **2. Mint More Test Codes**
-```bash
-npx hardhat run scripts/mint-test-codes.js --network opbnbTestnet
+### Backend (.env)
+```env
+PORT=3002
+FRONTEND_URL=https://your-frontend-domain.railway.app
+NODE_ENV=production
+CONTRACT_ADDRESS=0xe93ECeA7f56719e60cb03fc1608A5830793D95FF
+RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/concordia?retryWrites=true&w=majority
+ADMIN_ADDRESS=0xdA13e8F82C83d14E7aa639354054B7f914cA0998
+ADMIN_API_KEY=80378e51250f63ba0746e03add2019001106874edaf28dd6a529a0ae394a94f1
 ```
 
-### **3. Test Frontend Integration**
-1. Start your development server
-2. Navigate to the Aura Redemption section
-3. Try redeeming the test codes above
-4. Verify the NFT functionality
+## 📋 Next Steps for Railway Deployment
 
-### **4. Test Code Redemption**
-1. Connect wallet to opBNB Testnet
-2. Enter one of the test codes (e.g., `DPCBHTMQ`)
-3. Select the correct tier (Tier 1 for Basic, etc.)
-4. Click "Redeem Code"
-5. Confirm the transaction
-6. Verify Aura Points are awarded
+### 1. MongoDB Atlas Setup
+1. Create MongoDB Atlas cluster
+2. Configure database access and network access
+3. Get connection string and update `MONGODB_URI`
 
-## 🔍 **Contract Verification**
+### 2. Railway Backend Deployment
+1. Create new Railway project
+2. Set root directory to `backend`
+3. Add environment variables from backend section above
+4. Deploy
 
-### **BSCScan Verification**
-To verify the contract on BSCScan:
+### 3. Railway Frontend Deployment
+1. Create new Railway project
+2. Set root directory to `.` (root)
+3. Add environment variables from frontend section above
+4. Update `NEXT_PUBLIC_API_URL` with your backend Railway URL
+5. Deploy
+
+### 4. Update Environment Variables
+After deployment, update:
+- `FRONTEND_URL` in backend with your frontend Railway URL
+- `NEXT_PUBLIC_API_URL` in frontend with your backend Railway URL
+
+## 🔍 Testing Your Deployment
+
+### 1. Test Backend Health
 ```bash
-npx hardhat verify --network opbnbTestnet 0x338E8AF72E83C131B07162BDd2ACA599D53Ce3e7
+curl https://your-backend-domain.railway.app/health
 ```
 
-### **Contract Functions**
-- ✅ `createRedemptionCode()` - Mint new codes (owner only)
-- ✅ `redeemCode()` - Redeem codes for Aura points
-- ✅ `checkCodeStatus()` - Check code validity and status
-- ✅ `getRedemptionCodesForAddress()` - Get user's codes
-- ✅ `getAuraAmountForTier()` - Get Aura amount for tier
+### 2. Test Contract Interaction
+1. Visit your frontend URL
+2. Connect wallet (MetaMask with opBNB Testnet)
+3. Try creating a group
+4. Verify data is saved to MongoDB
 
-## 📊 **Transaction History**
+### 3. Test Admin Access
+```bash
+curl -H "Admin-Key: 80378e51250f63ba0746e03add2019001106874edaf28dd6a529a0ae394a94f1" \
+  https://your-backend-domain.railway.app/admin/groups
+```
 
-### **Deployment Transaction**
-- **TX Hash**: [Deployment transaction]
-- **Gas Used**: [Gas amount]
-- **Block Number**: [Block number]
+## 🛠️ Troubleshooting
 
-### **Test Code Minting Transactions**
-1. **DPCBHTMQ**: `0x91877b0d21b9c989752d432251fe969ef66c55464fe9e8dc87f41c551a1cd690`
-2. **A1T9LDSY**: `0x71bbf7b21c96fbe7f11f58cadfb8cc134b9536310665e8cf7402d40190b2ae90`
-3. **Q4TOUQAM**: `0x2ba15979c95ff9aad490ea135291b15d8ad89b123d313d55b4b0bd7f04c0b555`
+### Common Issues
+1. **CORS Errors**: Check `FRONTEND_URL` in backend environment
+2. **MongoDB Connection**: Verify connection string and network access
+3. **Contract Interaction**: Ensure wallet is connected to opBNB Testnet
+4. **Admin Access**: Verify admin API key is correct
 
-## 🎯 **Next Steps**
+### Useful Links
+- [Contract Explorer](https://testnet.bscscan.com/address/0xe93ECeA7f56719e60cb03fc1608A5830793D95FF)
+- [Transaction Details](https://testnet.bscscan.com/tx/0x50aa0176de2b23f07beaa0969f9600fcec96bfae644b7e8687b3a430f3826285)
+- [Railway Deployment Guide](RAILWAY_DEPLOYMENT_GUIDE.md)
 
-### **Immediate Actions**
-1. ✅ **Deploy Contract** - Completed
-2. ✅ **Update Frontend** - Completed
-3. ✅ **Mint Test Codes** - Completed
-4. 🔄 **Test Frontend Integration** - Ready to test
-5. 🔄 **Verify on BSCScan** - Optional
+## 🔐 Security Notes
 
-### **Production Readiness**
-1. **Security Audit** - Consider professional audit
-2. **Gas Optimization** - Monitor gas usage
-3. **User Testing** - Gather user feedback
-4. **Documentation** - Update user guides
-5. **Support System** - Set up user support
+- ✅ Private key used only for deployment
+- ✅ Admin API key generated securely
+- ✅ Contract deployed successfully
+- ⚠️ Remember to rotate admin API key for production
+- ⚠️ Never commit .env files to version control
 
-## 🚨 **Important Notes**
+## 📞 Support
 
-### **Security**
-- Only the contract owner can mint new redemption codes
-- Codes can only be redeemed by the NFT owner
-- Codes are burned after redemption (one-time use)
-- All operations are logged on the blockchain
+If you encounter issues:
+1. Check Railway logs
+2. Verify all environment variables
+3. Test MongoDB connection
+4. Review the Railway deployment guide
+5. Check contract explorer for transaction status
 
-### **Testing**
-- Use opBNB testnet for all testing
-- Test with small amounts first
-- Verify all tier amounts are correct
-- Test error conditions (invalid codes, wrong tiers)
+---
 
-### **Maintenance**
-- Monitor contract events for analytics
-- Keep private keys secure
-- Regular contract audits
-- Update frontend as needed
-
-## 🎉 **Success!**
-
-Your NFT-based Aura redemption system is now **live and ready for testing**! 
-
-The system provides:
-- ✅ **Secure NFT-based redemption codes**
-- ✅ **4-tier system with different Aura values**
-- ✅ **Transferable codes between wallets**
-- ✅ **One-time use with automatic burning**
-- ✅ **Full blockchain transparency**
-- ✅ **Ready for production deployment**
-
-**Happy testing!** 🎁✨ 
+**Deployment completed successfully! 🎉**

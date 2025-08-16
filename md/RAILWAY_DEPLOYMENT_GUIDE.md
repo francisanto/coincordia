@@ -1,341 +1,297 @@
-# Railway Deployment Guide for Concordia DApp
+# 🚀 Railway Deployment Guide for Concordia
 
-This guide will help you deploy your full-stack Concordia DApp (Next.js frontend + Express.js backend) to Railway.
+This guide will help you deploy both the frontend and backend of Concordia to Railway with MongoDB integration.
 
-## 🚀 Quick Start
+## 📋 Prerequisites
 
-### Prerequisites
-- [Railway account](https://railway.app/)
-- [GitHub account](https://github.com/)
-- Your project code pushed to GitHub
+1. **Railway Account**: Sign up at [railway.app](https://railway.app)
+2. **MongoDB Atlas Account**: Sign up at [mongodb.com/atlas](https://mongodb.com/atlas)
+3. **GitHub Repository**: Your Concordia code should be in a GitHub repository
 
-## 📋 Project Structure Overview
+## 🗄️ MongoDB Atlas Setup
 
-Your project consists of:
-- **Frontend**: Next.js application (root directory)
-- **Backend**: Express.js server (`backend/` directory)
-- **Smart Contracts**: Solidity contracts (`contracts/` directory)
+### 1. Create MongoDB Atlas Cluster
 
-## 🛠️ Step 1: Prepare Your Repository
+1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
+2. Create a new project called "Concordia"
+3. Create a new cluster (M0 Free tier is sufficient for development)
+4. Choose your preferred cloud provider and region
+5. Click "Create Cluster"
 
-### 1.1 Create Railway Configuration Files
+### 2. Configure Database Access
 
-Create the following files in your project root:
+1. Go to "Database Access" in the left sidebar
+2. Click "Add New Database User"
+3. Create a username and password (save these!)
+4. Set privileges to "Read and write to any database"
+5. Click "Add User"
 
-#### `railway.toml` (Root Directory)
-```toml
-[build]
-builder = "nixpacks"
+### 3. Configure Network Access
 
-[deploy]
-startCommand = "npm run start:railway"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+1. Go to "Network Access" in the left sidebar
+2. Click "Add IP Address"
+3. Click "Allow Access from Anywhere" (0.0.0.0/0)
+4. Click "Confirm"
 
-[[services]]
-name = "frontend"
-sourceDir = "."
-buildCommand = "npm install && npm run build"
-startCommand = "npm start"
-port = 3000
+### 4. Get Connection String
 
-[[services]]
-name = "backend"
-sourceDir = "backend"
-buildCommand = "npm install"
-startCommand = "npm start"
-port = 3001
+1. Go to "Database" in the left sidebar
+2. Click "Connect"
+3. Choose "Connect your application"
+4. Copy the connection string (it looks like: `mongodb+srv://username:password@cluster.mongodb.net/concordia?retryWrites=true&w=majority`)
+5. Replace `<password>` with your actual password
+
+## 🚂 Railway Deployment
+
+### 1. Deploy Backend First
+
+1. Go to [Railway Dashboard](https://railway.app/dashboard)
+2. Click "New Project"
+3. Choose "Deploy from GitHub repo"
+4. Select your Concordia repository
+5. Set the root directory to `backend`
+6. Click "Deploy"
+
+### 2. Configure Backend Environment Variables
+
+In your Railway project, go to "Variables" tab and add these environment variables:
+
+```env
+# MongoDB Configuration
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/concordia?retryWrites=true&w=majority
+
+# Server Configuration
+PORT=3002
+NODE_ENV=production
+
+# CORS Configuration
+FRONTEND_URL=https://your-frontend-domain.railway.app
+
+# Admin Configuration
+ADMIN_ADDRESS=0x0000000000000000000000000000000000000000
+ADMIN_API_KEY=your-secure-admin-api-key-here
+
+# Smart Contract Configuration
+CONTRACT_ADDRESS=0x1234567890123456789012345678901234567890
+
+# Email Configuration (Optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# OpenAI Configuration (Optional)
+OPENAI_API_KEY=your-openai-api-key
 ```
 
-#### `railway.json` (Root Directory)
-```json
-{
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "nixpacks"
-  },
-  "deploy": {
-    "startCommand": "npm run start:railway",
-    "healthcheckPath": "/api/health",
-    "healthcheckTimeout": 300,
-    "restartPolicyType": "on_failure",
-    "restartPolicyMaxRetries": 3
-  }
-}
+### 3. Deploy Frontend
+
+1. Create a new Railway project
+2. Choose "Deploy from GitHub repo"
+3. Select your Concordia repository
+4. Set the root directory to `.` (root)
+5. Click "Deploy"
+
+### 4. Configure Frontend Environment Variables
+
+In your frontend Railway project, go to "Variables" tab and add:
+
+```env
+# API Configuration
+NEXT_PUBLIC_API_URL=https://your-backend-domain.railway.app
+
+# Smart Contract Configuration
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x1234567890123456789012345678901234567890
+
+# Blockchain Configuration
+NEXT_PUBLIC_CHAIN_ID=5611
+NEXT_PUBLIC_RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
+
+# Admin Configuration
+ADMIN_API_KEY=your-secure-admin-api-key-here
 ```
 
-### 1.2 Update Package.json Scripts
+## 🔧 Backend Configuration
 
-Add these scripts to your root `package.json`:
+### 1. Update Backend Dependencies
+
+Make sure your `backend/package.json` has these scripts:
 
 ```json
 {
   "scripts": {
-    "start:railway": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
-    "start:frontend": "next start -p $PORT",
-    "start:backend": "cd backend && npm start",
-    "build:railway": "npm run build && cd backend && npm install",
-    "postinstall": "cd backend && npm install"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   }
 }
 ```
 
-### 1.3 Create Backend Railway Configuration
+### 2. Update Backend Server
 
-Create `backend/railway.json`:
-```json
-{
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "nixpacks"
-  },
-  "deploy": {
-    "startCommand": "npm start",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 300
-  }
-}
-```
-
-## 🔧 Step 2: Environment Configuration
-
-### 2.1 Create Environment Files
-
-#### Root `.env.local` (for frontend)
-```bash
-# Smart Contract Configuration
-NEXT_PUBLIC_CONTRACT_ADDRESS=your_contract_address
-NEXT_PUBLIC_NETWORK=opBNB Testnet
-NEXT_PUBLIC_RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
-
-# Backend API Configuration
-NEXT_PUBLIC_API_URL=https://your-backend-service.railway.app
-```
-
-#### `backend/.env` (for backend)
-```bash
-# Server Configuration
-PORT=3001
-FRONTEND_URL=https://your-frontend-service.railway.app
-NODE_ENV=production
-
-# Smart Contract Configuration
-CONTRACT_ADDRESS=your_contract_address
-RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
-
-# BNB Greenfield Configuration
-GREENFIELD_ENDPOINT=https://gnfd-testnet-sp1.bnbchain.org
-GREENFIELD_CHAIN_ID=5600
-GREENFIELD_BUCKET=concordia-data
-GREENFIELD_ACCOUNT_ADDRESS=your_greenfield_account_address
-GREENFIELD_PRIVATE_KEY=your_greenfield_private_key
-```
-
-### 2.2 Add Health Check Endpoint
-
-Add this to your `backend/server.js`:
+Ensure your `backend/server.js` has proper CORS configuration:
 
 ```javascript
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    service: 'concordia-backend'
-  });
-});
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "https://your-frontend-domain.railway.app",
+    credentials: true,
+  }),
+)
 ```
 
-## 🚀 Step 3: Deploy to Railway
+## 🌐 Domain Configuration
 
-### 3.1 Connect Your Repository
+### 1. Custom Domains (Optional)
 
-1. Go to [Railway Dashboard](https://railway.app/dashboard)
-2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Choose your repository
-5. Railway will automatically detect your project structure
-
-### 3.2 Configure Services
-
-Railway will create two services automatically:
-
-#### Frontend Service
-- **Name**: `frontend` (or your repo name)
-- **Source Directory**: `/` (root)
-- **Build Command**: `npm install && npm run build`
-- **Start Command**: `npm start`
-- **Port**: `3000`
-
-#### Backend Service
-- **Name**: `backend`
-- **Source Directory**: `/backend`
-- **Build Command**: `npm install`
-- **Start Command**: `npm start`
-- **Port**: `3001`
-
-### 3.3 Set Environment Variables
-
-For each service, go to the "Variables" tab and add:
-
-#### Frontend Variables
-```
-NEXT_PUBLIC_CONTRACT_ADDRESS=your_contract_address
-NEXT_PUBLIC_NETWORK=opBNB Testnet
-NEXT_PUBLIC_RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
-NEXT_PUBLIC_API_URL=https://your-backend-service.railway.app
-```
-
-#### Backend Variables
-```
-PORT=3001
-FRONTEND_URL=https://your-frontend-service.railway.app
-NODE_ENV=production
-CONTRACT_ADDRESS=your_contract_address
-RPC_URL=https://opbnb-testnet-rpc.bnbchain.org
-GREENFIELD_ENDPOINT=https://gnfd-testnet-sp1.bnbchain.org
-GREENFIELD_CHAIN_ID=5600
-GREENFIELD_BUCKET=concordia-data
-GREENFIELD_ACCOUNT_ADDRESS=your_greenfield_account_address
-GREENFIELD_PRIVATE_KEY=your_greenfield_private_key
-```
-
-### 3.4 Deploy
-
-1. Click "Deploy" in Railway
-2. Monitor the build logs
-3. Wait for deployment to complete
-
-## 🔗 Step 4: Configure Domains
-
-### 4.1 Custom Domains (Optional)
-
-1. Go to your service settings
+1. In your Railway project, go to "Settings"
 2. Click "Domains"
 3. Add your custom domain
-4. Configure DNS records as instructed
+4. Update your DNS records as instructed
 
-### 4.2 Update Environment Variables
+### 2. Update Environment Variables
 
-After getting your Railway URLs, update the environment variables:
+After setting up domains, update your environment variables:
 
+```env
+# Backend
+FRONTEND_URL=https://your-custom-domain.com
+
+# Frontend
+NEXT_PUBLIC_API_URL=https://api.your-custom-domain.com
 ```
-NEXT_PUBLIC_API_URL=https://your-backend-service.railway.app
-FRONTEND_URL=https://your-frontend-service.railway.app
+
+## 🔍 Testing Your Deployment
+
+### 1. Test Backend Health
+
+```bash
+curl https://your-backend-domain.railway.app/health
 ```
 
-## 🔍 Step 5: Verify Deployment
+Expected response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "database": "connected"
+}
+```
 
-### 5.1 Check Services
+### 2. Test Frontend
 
-1. **Frontend**: Visit your frontend URL
-2. **Backend**: Visit `https://your-backend-service.railway.app/health`
+1. Visit your frontend URL
+2. Connect your wallet
+3. Try creating a group
+4. Check if data is saved to MongoDB
 
-### 5.2 Monitor Logs
+### 3. Test Admin Access
 
-- Go to Railway Dashboard
-- Click on each service
-- Check "Logs" tab for any errors
+```bash
+curl -H "Admin-Key: your-admin-api-key" \
+  https://your-backend-domain.railway.app/admin/groups
+```
 
 ## 🛠️ Troubleshooting
 
 ### Common Issues
 
-#### Build Failures
-```bash
-# Check if all dependencies are in package.json
-npm install --production=false
-```
+1. **CORS Errors**
+   - Check that `FRONTEND_URL` is correctly set
+   - Ensure the URL includes the protocol (https://)
 
-#### Port Issues
-- Ensure `PORT` environment variable is set
-- Check that services use different ports
+2. **MongoDB Connection Issues**
+   - Verify your MongoDB connection string
+   - Check that your IP is whitelisted (or use 0.0.0.0/0)
+   - Ensure your database user has proper permissions
 
-#### CORS Issues
-- Verify `FRONTEND_URL` in backend environment
-- Check CORS configuration in `server.js`
+3. **Environment Variables Not Loading**
+   - Restart your Railway service after adding variables
+   - Check variable names for typos
+   - Ensure variables are in the correct project
 
-#### Environment Variables
-- Ensure all required variables are set in Railway
-- Check variable names match your code
+4. **Build Failures**
+   - Check Railway logs for specific error messages
+   - Ensure all dependencies are in `package.json`
+   - Verify Node.js version compatibility
 
-### Debug Commands
+### Logs and Monitoring
 
-```bash
-# Check Railway logs
-railway logs
-
-# SSH into Railway container
-railway shell
-
-# Check environment variables
-railway variables
-```
-
-## 📊 Monitoring and Maintenance
-
-### 1. Set Up Monitoring
-- Enable Railway's built-in monitoring
-- Set up alerts for service failures
-- Monitor resource usage
-
-### 2. Auto-scaling
-- Configure auto-scaling based on traffic
-- Set resource limits appropriately
-
-### 3. Backups
-- Regular database backups (if applicable)
-- Version control for configuration changes
+1. **View Logs**: Go to your Railway project → "Deployments" → Click on deployment → "Logs"
+2. **Monitor Performance**: Use Railway's built-in monitoring
+3. **Set up Alerts**: Configure alerts for downtime or errors
 
 ## 🔐 Security Considerations
 
 ### 1. Environment Variables
-- Never commit sensitive data to Git
-- Use Railway's secure environment variable storage
-- Rotate keys regularly
 
-### 2. Network Security
-- Use HTTPS in production
-- Configure proper CORS settings
+- Never commit sensitive data to your repository
+- Use strong, unique passwords for MongoDB
+- Rotate API keys regularly
+- Use different keys for development and production
+
+### 2. MongoDB Security
+
+- Enable MongoDB Atlas security features
+- Use VPC peering if possible
+- Enable audit logging
+- Set up backup schedules
+
+### 3. API Security
+
 - Implement rate limiting
+- Add request validation
+- Use HTTPS everywhere
+- Consider adding API authentication
 
-### 3. Smart Contract Security
-- Use different keys for development/production
-- Secure private key storage
-- Regular security audits
+## 📊 Monitoring and Maintenance
 
-## 📈 Scaling Considerations
+### 1. Database Monitoring
 
-### 1. Database
-- Consider using Railway's PostgreSQL service
-- Implement connection pooling
-- Set up read replicas if needed
+- Monitor MongoDB Atlas metrics
+- Set up alerts for high usage
+- Regularly backup your data
+- Monitor query performance
 
-### 2. Caching
-- Add Redis for session storage
-- Implement API response caching
-- Use CDN for static assets
+### 2. Application Monitoring
 
-### 3. Load Balancing
-- Railway handles basic load balancing
-- Consider multiple instances for high traffic
+- Set up error tracking (Sentry, etc.)
+- Monitor API response times
+- Track user activity
+- Set up uptime monitoring
 
-## 🎯 Next Steps
+### 3. Regular Maintenance
 
-1. **Set up CI/CD**: Connect GitHub Actions for automated deployments
-2. **Add monitoring**: Implement application performance monitoring
-3. **Security audit**: Review and secure your deployment
-4. **Performance optimization**: Optimize for production traffic
-5. **Backup strategy**: Implement data backup and recovery
+- Keep dependencies updated
+- Monitor for security vulnerabilities
+- Review and rotate API keys
+- Backup data regularly
+
+## 🚀 Production Checklist
+
+- [ ] MongoDB Atlas cluster configured
+- [ ] Database user created with proper permissions
+- [ ] Network access configured
+- [ ] Backend deployed to Railway
+- [ ] Frontend deployed to Railway
+- [ ] All environment variables set
+- [ ] CORS configured correctly
+- [ ] Custom domains configured (if needed)
+- [ ] Health checks passing
+- [ ] Admin API working
+- [ ] User registration/login working
+- [ ] Group creation working
+- [ ] Data persistence verified
+- [ ] Error monitoring set up
+- [ ] Backup strategy implemented
 
 ## 📞 Support
 
-- [Railway Documentation](https://docs.railway.app/)
-- [Railway Discord](https://discord.gg/railway)
-- [Next.js Deployment Guide](https://nextjs.org/docs/deployment)
+If you encounter issues:
 
----
+1. Check Railway logs first
+2. Verify all environment variables
+3. Test MongoDB connection
+4. Check CORS configuration
+5. Review this guide for common issues
 
-**Note**: This guide assumes you're deploying both frontend and backend as separate services on Railway. For a simpler setup, you could also deploy just the backend on Railway and the frontend on Vercel, then connect them via environment variables. 
+For additional help, check the Railway documentation or MongoDB Atlas support.
