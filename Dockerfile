@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --legacy-peer-deps
+# Install dependencies (less strict than npm ci)
+RUN npm install --legacy-peer-deps
 
 # Copy rest of code
 COPY . .
@@ -18,5 +18,5 @@ RUN npm run build
 # Expose Railway default port
 EXPOSE 3000  
 
-# Start the app (Railway sets PORT automatically)
+# Start the app
 CMD ["npm", "start"]
