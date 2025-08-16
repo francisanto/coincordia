@@ -1,23 +1,21 @@
 # Use Node.js 18 Debian slim image
 FROM node:18-bullseye-slim
 
-# Set working directory to backend
-WORKDIR /app/backend
+WORKDIR /app
 
-# Copy package.json and package-lock.json from backend folder
-COPY backend/package*.json ./
+# Copy package files
+COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (skip strict npm ci)
 RUN npm install --legacy-peer-deps
 
-# Copy the rest of the backend code
-COPY backend/ .
+# Copy rest of the app
+COPY . .
 
-# Build the app (if you have a build script)
+# Build the frontend
 RUN npm run build
 
-# Expose Railway default port
+# Railway exposes PORT automatically
 EXPOSE 3000
 
-# Start the app
 CMD ["npm", "start"]
