@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: concordia-app
+    ports:
+      - "3002:3002"          # matches PORT in your .env
+    env_file:
+      - .env                 # loads all your env variables
+    depends_on:
+      - mongo
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    command: >
+      sh -c "npm install && npm run build && npm start"
+
+  mongo:
+    image: mongo:7
+    container_name: concordia-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
+  node_modules:

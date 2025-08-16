@@ -56,11 +56,7 @@ export function InviteMemberModal({
   const handleSendInvite = async () => {
     if (isValidAddress && nickname.trim()) {
       try {
-<<<<<<< HEAD
     
-=======
-        // Store invite in BNB Greenfield
->>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
         await storeInviteInLocalStorage(groupId, {
           invitedAddress: walletAddress,
           nickname: nickname.trim(),
@@ -96,11 +92,6 @@ export function InviteMemberModal({
     setGroupCode(code)
     setShowGroupCode(true)
     
-<<<<<<< HEAD
-
-=======
-    // Store the group code in Greenfield
->>>>>>> 83309b13d5a75b38b03a17c3ada38868be08c9b1
             storeGroupCodeInLocalStorage(groupId, code)
     
     toast({

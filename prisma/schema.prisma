@@ -1,47 +1,34 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
 }
 
-// Admin data - stored in database
 model User {
-  id              Int      @id @default(autoincrement())
-  walletAddress   String   @unique @map("wallet_address") @db.VarChar(42)
-  nickname        String?  @db.VarChar(100)
-  totalAuraPoints Int      @default(0) @map("total_aura_points")
-  totalContributed Decimal @default(0) @db.Decimal(18, 8) @map("total_contributed")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  @@map("users")
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  walletAddress   String   @unique
+  nickname        String?
+  totalAuraPoints Int      @default(0)
+  totalContributed Float   @default(0) // Mongo doesn’t support Decimal in Prisma
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model AdminLog {
-  id           Int      @id @default(autoincrement())
-  action       String   @db.VarChar(100)
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  action       String
   details      Json?
-  adminAddress String?  @map("admin_address") @db.VarChar(42)
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  @@map("admin_logs")
+  adminAddress String?
+  createdAt    DateTime @default(now())
 }
 
 model SystemStat {
-  id         Int      @id @default(autoincrement())
-  totalGroups Int     @default(0) @map("total_groups")
-  totalUsers Int      @default(0) @map("total_users")
-  totalVolume Decimal @default(0) @db.Decimal(18, 8) @map("total_volume")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@map("system_stats")
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  totalGroups  Int      @default(0)
+  totalUsers   Int      @default(0)
+  totalVolume  Float    @default(0)
+  updatedAt    DateTime @updatedAt
 }

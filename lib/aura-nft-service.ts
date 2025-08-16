@@ -1,7 +1,7 @@
 import { nftMetadataService, type AuraNFTMetadata } from './nft-metadata-service'
 
 // Contract address (deployed on opBNB testnet)
-const AURA_REDEMPTION_CONTRACT = "0x338E8AF72E83C131B07162BDd2ACA599D53Ce3e7"
+const AURA_REDEMPTION_CONTRACT = "0xe93ECeA7f56719e60cb03fc1608A5830793D95FF"
 
 export interface RedemptionCodeInfo {
   code: string;
