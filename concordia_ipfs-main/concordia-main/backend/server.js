@@ -59,7 +59,7 @@ const upload = multer({
 
 // Admin Configuration
 const ADMIN_CONFIG = {
-  adminAddress: process.env.ADMIN_ADDRESS || "0x0000000000000000000000000000000000000000", // Admin wallet address for access control
+  adminAddress: process.env.ADMIN_ADDRESS || "0xdA13e8F82C83d14E7aa639354054B7f914cA0998", // Admin wallet address for access control
 }
 
 // Initialize MongoDB connection status
@@ -94,7 +94,7 @@ async function checkMongoDBStatus() {
 
 // Smart Contract Configuration
 const CONTRACT_CONFIG = {
-  address: process.env.CONTRACT_ADDRESS || "0x1234567890123456789012345678901234567890",
+  address: process.env.CONTRACT_ADDRESS || "0xe93ECeA7f56719e60cb03fc1608A5830793D95FF",
   abi: [
     // Add your contract ABI here
     "function createGroup(string,string,uint256,uint256,uint256,uint8,string) external payable returns (uint256)",

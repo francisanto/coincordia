@@ -1,4 +1,4 @@
-FROM node:14-alpine
+FROM node:16-alpine
 
 WORKDIR /app
 
@@ -8,19 +8,31 @@ RUN apk add --no-cache python3 make g++ git curl
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --no-package-lock
+# Modify package.json to fix recursive script calls
+RUN sed -i 's/cd concordia-main && npm run dev/next dev/g' package.json && \
+    sed -i 's/cd concordia-main && npm run build/next build/g' package.json && \
+    sed -i 's/cd concordia-main && npm run start/next start/g' package.json && \
+    sed -i 's/cd concordia-main && npm run lint/next lint/g' package.json && \
+    sed -i 's/npm run install:all && cd concordia-main && npm run dev/next dev/g' package.json && \
+    sed -i 's/npm install && cd concordia-main && npm install/npm install/g' package.json
+
+# Install dependencies with clean npm cache
+RUN npm cache clean --force && npm install
 
 # Copy source files
 COPY . .
 
 # Set environment variables
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 ENV PORT=3002
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Expose the port the app runs on
 EXPOSE 3002
 
-# Start the application in development mode
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3002/api/health || exit 1
+
+# Start the application in development mode to avoid build issues
 CMD ["npm", "run", "dev"]

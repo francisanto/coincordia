@@ -1,0 +1,56 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 30B 0.0s
+#1 transferring dockerfile: 1.26kB 0.1s done
+#1 DONE 0.2s
+
+#2 [internal] load metadata for docker.io/library/node:16-alpine
+#2 DONE 1.5s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 354B 0.0s done
+#3 DONE 0.1s
+
+#4 [internal] load build context
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/node:16-alpine@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787
+#5 resolve docker.io/library/node:16-alpine@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787
+#5 resolve docker.io/library/node:16-alpine@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787 0.2s done
+#5 DONE 0.2s
+
+#4 [internal] load build context
+#4 transferring context: 11.91kB 5.4s
+#4 transferring context: 13.77kB 5.5s done
+#4 DONE 5.6s
+
+#6 [5/7] RUN sed -i 's/cd concordia-main && npm run dev/next dev/g' package.json &&     sed -i 's/cd concordia-main && npm run build/next build/g' package.json &&     sed -i 's/cd concordia-main && npm run start/next start/g' package.json &&     sed -i 's/cd concordia-main && npm run lint/next lint/g' package.json &&     sed -i 's/npm run install:all && cd concordia-main && npm run dev/next dev/g' package.json &&     sed -i 's/npm install && cd concordia-main && npm install/npm install/g' package.json
+#6 CACHED
+
+#7 [2/7] WORKDIR /app
+#7 CACHED
+
+#8 [3/7] RUN apk add --no-cache python3 make g++ git curl
+#8 CACHED
+
+#9 [4/7] COPY package*.json ./
+#9 CACHED
+
+#10 [6/7] RUN npm cache clean --force && npm install
+#10 CACHED
+
+#11 [7/7] COPY . .
+#11 DONE 0.8s
+
+#12 exporting to image
+#12 exporting layers
+#12 exporting layers 0.5s done
+#12 exporting manifest sha256:314701cb0f9cc316335d11107c3e427089188f1ec80e798ebe2e47527b4069db 0.0s done
+#12 exporting config sha256:112a3e348405cb85786daf0259b4b848422b044f7e04719a2f8414efc00a6080 0.0s done
+#12 exporting attestation manifest sha256:07ad39f1aa09d7ab3edb96502b7a7ef23b632a08a6a4ee71f1d1f734bce0d46c 0.0s done
+#12 exporting manifest list sha256:32e3467536845a76e71e682616ec230b7fa64d1030e05a31baf20b777b928130 0.0s done
+#12 naming to docker.io/library/concordia-app:latest done
+#12 unpacking to docker.io/library/concordia-app:latest
+#12 unpacking to docker.io/library/concordia-app:latest 0.3s done
+#12 DONE 1.0s

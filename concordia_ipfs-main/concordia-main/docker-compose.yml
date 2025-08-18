@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   concordia-app:
     build:
@@ -19,6 +17,12 @@ services:
       - /app/node_modules
       - concordia-data:/app/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       - mongodb
 

@@ -920,9 +920,7 @@ export default function HomePage() {
       contributionAmount: parsedContributionAmount,
       currentAmount: parsedContributionAmount, // Initial amount in contract
       targetAmount: parsedContributionAmount * 10, // Assuming 10 members for target
-      description: groupDescription || "No description provided.",
       duration: duration,
-      withdrawalDate: endDate,
       withdrawalDate: contractData.withdrawalDate, // From contract
       dueDay: dueDay,
       isActive: true,
