@@ -46,8 +46,19 @@ function WalletConnection({ handleDisconnect }: { handleDisconnect: () => void }
   const { disconnect } = useDisconnect()
   const { switchChain } = useSwitchChain()
 
-  const requiredChainId = opBNBTestnet.id
+  // Get chain ID from environment variable or default to opBNBTestnet.id
+  const requiredChainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "5611")
   const isWrongNetwork = isConnected && chainId !== requiredChainId
+
+  // Log network configuration for debugging
+  useEffect(() => {
+    console.log("Network Configuration:")
+    console.log("- Required Chain ID:", requiredChainId)
+    console.log("- Current Chain ID:", chainId)
+    console.log("- Contract Address:", process.env.NEXT_PUBLIC_CONTRACT_ADDRESS)
+    console.log("- RPC URL:", process.env.NEXT_PUBLIC_RPC_URL)
+    console.log("- Network Name:", process.env.NEXT_PUBLIC_NETWORK)
+  }, [chainId, requiredChainId])
 
   const handleConnect = async () => {
     try {

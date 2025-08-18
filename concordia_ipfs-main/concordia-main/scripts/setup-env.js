@@ -13,21 +13,34 @@ const path = require('path');
 // Define default environment variables
 const defaultEnvVars = {
   // Frontend variables
-  NEXT_PUBLIC_CONTRACT_ADDRESS: '0x31ff87832e0bc5eaee333d1db549829ba0376d45aa23a41e6b12bfe17c969595',
+  NEXT_PUBLIC_CONTRACT_ADDRESS: '0xe93ECeA7f56719e60cb03fc1608A5830793D95FF',
   NEXT_PUBLIC_NETWORK: 'opBNB Testnet',
   NEXT_PUBLIC_RPC_URL: 'https://opbnb-testnet-rpc.bnbchain.org',
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://coincordia-production.up.railway.app',
+  NEXT_PUBLIC_CHAIN_ID: '5611',
   
   // Backend variables
-  PORT: process.env.PORT || '5000',
+  PORT: process.env.PORT || '3002',
   NODE_ENV: process.env.NODE_ENV || 'production',
   
   // Contract variables
-  CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS || '0x31ff87832e0bc5eaee333d1db549829ba0376d45aa23a41e6b12bfe17c969595',
+  CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS || '0xe93ECeA7f56719e60cb03fc1608A5830793D95FF',
   RPC_URL: process.env.RPC_URL || 'https://opbnb-testnet-rpc.bnbchain.org',
+  NETWORK: 'opBNB Testnet',
+  CHAIN_ID: '5611',
+  
+  // Database configuration
+  MONGODB_URI: process.env.MONGODB_URI || 'mongodb+srv://coincordia:coincordiasolly@your_cluster.mongodb.net/test?retryWrites=true&w=majority',
+  
+  // Admin configuration
+  ADMIN_ADDRESS: process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998',
+  ADMIN_API_KEY: process.env.ADMIN_API_KEY || '80378e51250f63ba0746e03add2019001106874edaf28dd6a529a0ae394a94f1',
+  
+  // Frontend URL
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://coincordia-fronted-production.up.railway.app',
   
   // Optional variables with fallbacks
-  ARWEAVE_KEY: process.env.ARWEAVE_KEY || '{}',
+  PRIVATE_KEY: process.env.PRIVATE_KEY || '87117ab7b5bedc4ff6487fde37c54b025ba0478f64a8e167bfde4e7b827d09d4',
 };
 
 // Path to .env.production file

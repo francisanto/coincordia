@@ -14,6 +14,16 @@ const connectDB = require('./config/database');
 const app = express()
 const PORT = process.env.PORT || 3002
 
+// Log environment variables for debugging (excluding sensitive data)
+console.log('Environment Configuration:')
+console.log('- NODE_ENV:', process.env.NODE_ENV)
+console.log('- PORT:', PORT)
+console.log('- CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS)
+console.log('- RPC_URL:', process.env.RPC_URL)
+console.log('- NETWORK:', process.env.NETWORK)
+console.log('- MONGODB_URI:', process.env.MONGODB_URI ? 'Set (hidden)' : 'Not set')
+console.log('- FRONTEND_URL:', process.env.FRONTEND_URL)
+
 // Connect to MongoDB
 let mongoConnected = false;
 connectDB().then(connection => {
@@ -358,15 +368,6 @@ app.get("/api/groups/:groupId", async (req, res) => {
         details: mongoError.message 
       });
     }
-        }
-  } catch (error) {
-    console.error("❌ Error in /api/groups/:groupId endpoint:", error);
-    
-    res.status(500).json({
-      error: "Failed to retrieve group data",
-      details: error.message,
-    });
-  }
   } catch (error) {
     console.error("❌ Error retrieving group data:", error);
     
