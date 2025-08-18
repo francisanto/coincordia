@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi"
+import { useAccount, useConnect, useDisconnect, useSwitchNetwork } from "wagmi"
 import { opBNBTestnet } from "wagmi/chains"
 import { Wallet } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -11,11 +11,38 @@ export function WalletConnect() {
   const { address, isConnected, chainId } = useAccount()
   const { connect, connectors, error, isPending } = useConnect()
   const { disconnect } = useDisconnect()
-  const { switchChain } = useSwitchChain()
+  const { switchNetwork } = useSwitchNetwork()
   const { toast } = useToast()
 
   // Get chain ID from environment variable or default to opBNBTestnet.id
   const requiredChainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "5611")
+  
+  // Define the chain configuration
+  const targetChain = {
+    id: requiredChainId,
+    name: 'opBNB Testnet',
+    network: 'opbnb-testnet',
+    nativeCurrency: {
+      name: 'BNB',
+      symbol: 'BNB',
+      decimals: 18,
+    },
+    rpcUrls: {
+      default: {
+        http: ['https://opbnb-testnet-rpc.bnbchain.org'],
+      },
+      public: {
+        http: ['https://opbnb-testnet-rpc.bnbchain.org'],
+      },
+    },
+    blockExplorers: {
+      default: {
+        name: 'BscScan',
+        url: 'https://testnet.bscscan.com',
+      },
+    },
+    testnet: true,
+  }
 
   const handleConnect = async () => {
     try {
@@ -50,7 +77,20 @@ export function WalletConnect() {
 
   const handleSwitchNetwork = async () => {
     try {
-      await switchChain({ chainId: requiredChainId })
+      // Try to switch to the target chain
+      await switchNetwork({
+        chainId: targetChain.id,
+        chainName: targetChain.name,
+        nativeCurrency: targetChain.nativeCurrency,
+        rpcUrls: targetChain.rpcUrls.default.http,
+        blockExplorerUrls: [targetChain.blockExplorers.default.url],
+      })
+      
+      toast({
+        title: "Network switched",
+        description: "Successfully connected to the required network.",
+        variant: "success",
+      })
     } catch (err) {
       console.error("Network switch error:", err)
       toast({
@@ -64,9 +104,13 @@ export function WalletConnect() {
   // Check if we need to switch networks
   useEffect(() => {
     if (isConnected && chainId !== requiredChainId) {
+      // Automatically attempt to switch networks
+      handleSwitchNetwork()
+      
+      // Also show a toast with manual switch option in case auto-switch fails
       toast({
         title: "Wrong network",
-        description: "Please switch to the required network",
+        description: "Attempting to switch to the required network...",
         action: (
           <Button variant="outline" onClick={handleSwitchNetwork}>
             Switch Network

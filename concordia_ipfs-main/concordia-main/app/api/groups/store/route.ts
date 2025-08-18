@@ -1,7 +1,10 @@
 
 import { NextResponse } from 'next/server'
 import { arweaveService } from '@/lib/arweave-service'
-import { ipfsService } from '@/lib/ipfs-service'
+import connectToDatabase from '@/lib/mongodb'
+import Group from '@/lib/models/Group'
+
+// Group model is imported from lib/models/Group
 
 export async function POST(request: Request) {
   try {
@@ -24,16 +27,36 @@ export async function POST(request: Request) {
       )
     }
 
-    // Store in IPFS
-    const ipfsResult = await ipfsService.storeGroupData(
-      groupData.groupId,
-      groupData,
-      userAddress
-    )
-
-    if (!ipfsResult.success) {
+    // Connect to MongoDB
+    await connectToDatabase()
+    
+    // Prepare group data for MongoDB
+    const mongoGroupData = {
+      ...groupData,
+      updatedAt: new Date().toISOString()
+    }
+    
+    // Store in MongoDB
+    let mongoResult
+    try {
+      // Check if group already exists
+      let group = await Group.findOne({ groupId: groupData.groupId })
+      
+      if (group) {
+        // Update existing group
+        Object.assign(group, mongoGroupData)
+        mongoResult = await group.save()
+        console.log("✅ Group data updated in MongoDB:", groupData.groupId)
+      } else {
+        // Create new group
+        const newGroup = new Group(mongoGroupData)
+        mongoResult = await newGroup.save()
+        console.log("✅ Group data stored in MongoDB:", groupData.groupId)
+      }
+    } catch (mongoError) {
+      console.error("❌ Error storing group data in MongoDB:", mongoError)
       return NextResponse.json(
-        { success: false, error: ipfsResult.error || 'Failed to store group data in IPFS' },
+        { success: false, error: 'Failed to store group data in MongoDB' },
         { status: 500 }
       )
     }
@@ -48,15 +71,15 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        ipfs: {
-          ipfsHash: ipfsResult.ipfsHash,
-          gatewayUrl: ipfsService.getGatewayUrl(ipfsResult.ipfsHash!)
+        mongodb: {
+          success: true,
+          groupId: groupData.groupId
         },
         arweave: {
           transactionId: arweaveResult.transactionId,
           success: arweaveResult.success
         },
-        message: 'Group data stored successfully in IPFS and Arweave'
+        message: 'Group data stored successfully in MongoDB and Arweave'
       }
     })
 
@@ -81,13 +104,21 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get user groups from IPFS
-    const result = await ipfsService.getUserGroups(userAddress)
+    // Connect to MongoDB
+    await connectToDatabase()
+    
+    // Get user groups from MongoDB
+    const groups = await Group.find({
+      $or: [
+        { creator: userAddress.toLowerCase() },
+        { 'members.address': userAddress.toLowerCase() }
+      ]
+    }).lean()
 
     return NextResponse.json({
-      success: result.success,
-      data: result.data || [],
-      error: result.error
+      success: true,
+      data: groups || [],
+      source: 'mongodb'
     })
 
   } catch (error) {

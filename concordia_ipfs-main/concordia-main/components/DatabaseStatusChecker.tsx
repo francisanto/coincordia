@@ -1,22 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import api from '@/lib/api';
+import { checkMongoDBStatus } from '@/lib/mongodb-status';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
-interface ArweaveStatusCheckerProps {
+interface DatabaseStatusCheckerProps {
   groupId: string;
-  transactionId: string;
+  documentId: string;
   userAddress: string;
   initialStatus?: 'pending' | 'confirmed' | 'failed';
   onStatusUpdate?: (status: 'pending' | 'confirmed' | 'failed') => void;
 }
 
-const ArweaveStatusChecker: React.FC<ArweaveStatusCheckerProps> = ({
+const DatabaseStatusChecker: React.FC<DatabaseStatusCheckerProps> = ({
   groupId,
-  transactionId,
+  documentId,
   userAddress,
   initialStatus = 'pending',
   onStatusUpdate
@@ -27,18 +27,18 @@ const ArweaveStatusChecker: React.FC<ArweaveStatusCheckerProps> = ({
 
   // Auto-check status on mount if pending
   useEffect(() => {
-    if (status === 'pending' && transactionId) {
+    if (status === 'pending' && documentId) {
       checkStatus();
     }
   }, []);
 
   const checkStatus = async () => {
-    if (!transactionId || !userAddress) return;
+    if (!documentId || !userAddress) return;
     
     setIsChecking(true);
     
     try {
-      const response = await api.checkArweaveStatus(transactionId, userAddress);
+      const response = await checkMongoDBStatus(documentId, userAddress);
       
       if (response.success) {
         setStatus(response.status || 'pending');
@@ -104,4 +104,4 @@ const ArweaveStatusChecker: React.FC<ArweaveStatusCheckerProps> = ({
   );
 };
 
-export default ArweaveStatusChecker;
+export default DatabaseStatusChecker;

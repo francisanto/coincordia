@@ -1,4 +1,4 @@
-import { api } from './api';
+import { apiClient } from './api';
 
 export interface ArweaveStatusResponse {
   success: boolean;
@@ -21,7 +21,7 @@ export async function checkArweaveStatus(transactionId: string, userAddress: str
   try {
     // In a real implementation, this would call an API endpoint that checks Arweave status
     // For demo purposes, we'll simulate a status check with the retrieve endpoint
-    const response = await api.retrieveGroup({
+    const response = await apiClient.retrieveGroup({
       arweaveId: transactionId,
       userAddress
     });

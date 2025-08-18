@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { useAccount, useContractWrite, useWaitForTransaction } from "wagmi"
 import { parseEther } from "viem"
+import { GroupMetadata } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, CheckCircle, AlertCircle, ExternalLink, Database, Shield } from "lucide-react"
-import { arweaveService, type GroupMetadata } from "@/lib/arweave-service"
 
 // Updated Concordia Smart Contract ABI - matches your actual contract
 export const CONCORDIA_CONTRACT_ABI = [
@@ -262,13 +262,17 @@ export function SmartContractIntegration({
   const [activeTxType, setActiveTxType] = useState<"create" | "delete" | null>(null)
   const [storageStatus, setStorageStatus] = useState<string>("")
 
-  const { writeContract, data: hash, error, isPending } = useWriteContract()
+  const { write: writeContract, data: hash, error, isLoading: isPending } = useContractWrite({
+    address: CONCORDIA_CONTRACT_ADDRESS,
+    abi: CONCORDIA_CONTRACT_ABI,
+    functionName: "createGroup"
+  })
 
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
     data: receipt,
-  } = useWaitForTransactionReceipt({
+  } = useWaitForTransaction({
     hash,
   })
 
@@ -320,7 +324,7 @@ export function SmartContractIntegration({
       const tempObjectId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
       // Create comprehensive group metadata
-      const groupMetadata = arweaveService.createGroupMetadata({
+      const groupMetadata = {
         groupId: tempObjectId,
         name: teamName,
         description: groupDescription,
@@ -334,31 +338,51 @@ export function SmartContractIntegration({
         blockNumber: "",
         gasUsed: "",
         objectId: tempObjectId,
-      })
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: "1.0",
+        members: [],
+        contributions: [],
+        settings: {
+          dueDay: dueDay ? Number.parseInt(dueDay) : 1,
+          duration: duration,
+          withdrawalDate: withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          isActive: true,
+          maxMembers: 10
+        }
+      }
 
-      setStorageStatus("Storing metadata on Arweave...")
+      setStorageStatus("Storing metadata on MongoDB...")
 
-      // Store metadata on Arweave first (with timeout and fallback)
+      // Store metadata on MongoDB first (with timeout and fallback)
       let storeResult: { success: boolean; transactionId?: string; error?: string } = { success: false }
       try {
-        storeResult = await Promise.race([
-          arweaveService.storeGroupData(tempObjectId, groupMetadata, address!),
-          new Promise<{ success: boolean; transactionId?: string; error?: string }>((_, reject) => 
-            setTimeout(() => reject(new Error("Arweave timeout")), 15000)
-          )
-        ])
+        const response = await fetch('/api/groups/store', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            groupId: tempObjectId,
+            groupData: groupMetadata,
+            userAddress: address
+          }),
+        })
+        
+        const result = await response.json()
+        storeResult = { success: result.success, transactionId: result.groupId, error: result.error }
       } catch (error) {
-        console.warn("Arweave storage failed, proceeding with fallback:", error)
-        // Use fallback hash if Arweave fails
+        console.warn("MongoDB storage failed, proceeding with fallback:", error)
+        // Use fallback hash if MongoDB fails
         storeResult = { success: true, transactionId: tempObjectId }
       }
 
       if (!storeResult.success) {
-        console.warn("Arweave storage failed, using fallback")
+        console.warn("MongoDB storage failed, using fallback")
         storeResult = { success: true, transactionId: tempObjectId }
       }
 
-      const arweaveId = storeResult.transactionId || tempObjectId
+      const mongoDbId = storeResult.transactionId || tempObjectId
 
       setStorageStatus("Creating smart contract...")
 
@@ -391,12 +415,11 @@ export function SmartContractIntegration({
           targetAmount: Number.parseFloat(contributionAmount) * 10,
           withdrawalDate: withdrawalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
           isActive: true,
-          ipfsHash: ipfsHash,
-          ipfsGatewayUrl: ipfsService.getGatewayUrl(ipfsHash),
+          mongoDbId: mongoDbId
         }
         
         console.log("✅ Test mode: Calling success callback with data:", contractData)
-        onSuccess?.(ipfsHash, mockHash, contractData)
+        onSuccess?.(mongoDbId, mockHash, contractData)
         setActiveTxType(null)
         setStorageStatus("Group created successfully! (Test Mode)")
         return
@@ -410,12 +433,9 @@ export function SmartContractIntegration({
       console.log("- Duration:", durationSeconds)
       console.log("- Withdrawal Date:", Math.floor(finalDate))
       console.log("- Due Day:", Number(dueDay ? Number.parseInt(dueDay) : 1))
-      console.log("- Arweave ID:", arweaveId)
+      console.log("- MongoDB ID:", mongoDbId)
       
       writeContract({
-        address: CONCORDIA_CONTRACT_ADDRESS as `0x${string}`,
-        abi: CONCORDIA_CONTRACT_ABI,
-        functionName: "createGroup",
         args: [
           teamName || "Unnamed Group",
           groupDescription || "No description",
@@ -423,7 +443,7 @@ export function SmartContractIntegration({
           BigInt(durationSeconds),
           BigInt(Math.floor(finalDate)),
           Number(dueDay ? Number.parseInt(dueDay) : 1),
-          arweaveId,
+          mongoDbId,
         ],
         value: parsedAmount, // Initial contribution
       })
@@ -474,15 +494,27 @@ export function SmartContractIntegration({
             updatedAt: new Date().toISOString(),
           }
 
-          // Update metadata in Arweave
+          // Update metadata in MongoDB
       try {
-        const updateResult = await arweaveService.storeGroupData(tempObjectId, updatedMetadata, address!)
+        const response = await fetch('/api/groups/store', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            groupId: tempObjectId,
+            groupData: updatedMetadata,
+            userAddress: address
+          }),
+        })
         
-        if (!updateResult.success) {
-          console.warn("Failed to update metadata in Arweave:", updateResult.error)
+        const result = await response.json()
+        
+        if (!result.success) {
+          console.warn("Failed to update metadata in MongoDB:", result.error)
         }
       } catch (error) {
-        console.warn("Arweave metadata update failed, continuing:", error)
+        console.warn("MongoDB metadata update failed, continuing:", error)
       }
 
           setStorageStatus("Group created successfully!")
@@ -635,29 +667,29 @@ export function SmartContractIntegration({
         )}
       </Button>
 
-      {/* Arweave Integration Info */}
+      {/* MongoDB Integration Info */}
       <Card className="bg-concordia-light-purple/10 border-concordia-light-purple/30">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2 mb-3">
             <Database className="h-4 w-4 text-concordia-pink" />
-            <span className="text-white font-semibold text-sm">Arweave Permanent Storage</span>
+            <span className="text-white font-semibold text-sm">MongoDB Database Storage</span>
           </div>
           <div className="space-y-2 text-xs text-white/70">
             <div className="flex items-center space-x-2">
               <Shield className="h-3 w-3" />
-              <span>Group metadata stored permanently on Arweave network</span>
+              <span>Group metadata stored securely in MongoDB database</span>
             </div>
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-3 w-3" />
-              <span>Immutable content-addressed storage</span>
+              <span>Fast and reliable data access</span>
             </div>
             <div className="flex items-center space-x-2">
               <ExternalLink className="h-3 w-3" />
-              <span>Smart contract linked to Arweave transaction IDs</span>
+              <span>Smart contract linked to MongoDB document IDs</span>
             </div>
             <div className="flex items-center space-x-2">
               <Database className="h-3 w-3" />
-              <span>Permanent storage for group data</span>
+              <span>Persistent storage for group data</span>
             </div>
           </div>
         </CardContent>

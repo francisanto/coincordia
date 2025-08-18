@@ -1,13 +1,14 @@
 "use client"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins, Copy, ExternalLink, Trash2, AlertTriangle } from "lucide-react"
+import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins, Copy, ExternalLink, Trash2, AlertTriangle, Database, CheckCircle } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
-import ArweaveStorageInfo from "./ArweaveStorageInfo"
-import ArweaveStatusChecker from "./ArweaveStatusChecker"
+import MongoDBStorageInfo from "./MongoDBStorageInfo"
+import DatabaseStatusChecker from "@/components/DatabaseStatusChecker"
 import { useState } from "react"
 import { useAccount } from "wagmi"
 import type { SavingsGroup } from "./group-dashboard"
@@ -239,28 +240,27 @@ export function GroupDetailsModal({ group, isOpen, onClose, onDeleteGroup }: Gro
               )}
             </div>
             
-            {/* Arweave Storage */}
-            <ArweaveStorageInfo
-              transactionId={group.arweaveTransactionId}
-              status={group.arweaveStatus}
-              timestamp={group.arweaveTimestamp}
-              onViewTransaction={(txId) => window.open(`https://viewblock.io/arweave/tx/${txId}`, '_blank')}
+            {/* MongoDB Storage */}
+            <MongoDBStorageInfo
+              documentId={group.mongoDbId}
+              status={group.mongoDbStatus}
+              timestamp={group.mongoDbTimestamp}
             />
             
-            {/* Arweave Status Checker (only show if transaction is pending) */}
-            {group.arweaveTransactionId && group.arweaveStatus === 'pending' && (
+            {/* MongoDB Status Checker (only show if status is pending) */}
+            {group.mongoDbId && group.mongoDbStatus === 'pending' && (
               <div className="col-span-2 mt-2 bg-concordia-dark-blue/30 p-2 rounded-md border border-concordia-light-purple/20">
-                <ArweaveStatusChecker
+                <DatabaseStatusChecker
                   groupId={group.id}
-                  transactionId={group.arweaveTransactionId}
+                  documentId={group.mongoDbId}
                   userAddress={group.members[0]?.address || ''}
-                  initialStatus={group.arweaveStatus}
+                  initialStatus={group.mongoDbStatus}
                   onStatusUpdate={(status) => {
-                    // In a real app, this would update the group's status in state/storage
-                    console.log(`Arweave status updated to: ${status}`);
+                    // Update the group's status in state/storage
+                    console.log(`MongoDB status updated to: ${status}`);
                     // Update the UI immediately
-                    group.arweaveStatus = status;
-                    group.arweaveTimestamp = new Date().toISOString();
+                    group.mongoDbStatus = status;
+                    group.mongoDbTimestamp = new Date().toISOString();
                   }}
                 />
               </div>

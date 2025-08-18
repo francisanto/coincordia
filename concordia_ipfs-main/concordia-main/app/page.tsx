@@ -9,8 +9,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Users, Lock, Trophy, Target, ArrowRight, Shield, Coins, Wallet, ChevronDown, Plus } from "lucide-react"
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi"
+import { useAccount, useConnect, useDisconnect } from "wagmi"
 import { opBNBTestnet } from "wagmi/chains"
+
+// Declare global window interface
+declare global {
+  interface Window {
+    concordiaApp?: {
+      handleDeleteGroup?: (groupId: string) => Promise<boolean>;
+      disconnect?: () => void;
+      [key: string]: any;
+    };
+    ethereum?: any;
+  }
+}
 import { GroupDashboard } from "@/components/group-dashboard"
 import { GroupMetadata } from "@/lib/types"
 import { SmartContractIntegration } from "@/components/smart-contract-integration"
@@ -86,8 +98,9 @@ export default function HomePage() {
         localStorage.removeItem('wagmi.connected');
         localStorage.removeItem('wagmi.wallet');
         localStorage.removeItem('wagmi.account');
-        if (window.ethereum) {
-          window.ethereum.removeAllListeners();
+        // Safely check for ethereum property on window
+        if (typeof window !== 'undefined' && (window as any).ethereum) {
+          (window as any).ethereum.removeAllListeners();
         }
       }
       setUserGroups([]);
@@ -133,13 +146,13 @@ export default function HomePage() {
       console.log('🗑️ Deleting group from localStorage:', groupId)
       
       // First delete from local storage
-      const success = await persistentStorageService.deleteGroup(groupId, address);
+      const success = await persistentStorageService.deleteGroup(groupId, address || '');
 
       if (!success) {
         throw new Error("Failed to delete group from localStorage")
       }
       
-      // Then delete from decentralized storage via API
+      // Then delete from MongoDB via API
       try {
         const response = await fetch(`/api/groups/${groupId}/delete`, {
           method: 'DELETE',
@@ -152,26 +165,26 @@ export default function HomePage() {
         const result = await response.json();
         
         if (result.success) {
-          console.log("✅ Group deleted from decentralized storage:", result);
+          console.log("✅ Group deleted from MongoDB:", result);
           toast({
-            title: "🌐 Group Deleted from Decentralized Storage",
-            description: "Your group data has been removed from IPFS and marked as deleted in Arweave.",
+            title: "🌐 Group Deleted from Database",
+            description: "Your group data has been removed from MongoDB.",
             duration: 5000,
           });
         } else {
-          console.error("⚠️ Warning: Failed to delete from decentralized storage:", result.error);
+          console.error("⚠️ Warning: Failed to delete from MongoDB:", result.error);
           toast({
-            title: "⚠️ Decentralized Storage Warning",
-            description: "Group was deleted locally but may still exist in decentralized storage.",
+            title: "⚠️ Database Warning",
+            description: "Group was deleted locally but may still exist in the database.",
             variant: "destructive",
             duration: 5000,
           });
         }
       } catch (apiError) {
-        console.error("❌ API Error deleting from decentralized storage:", apiError);
+        console.error("❌ API Error deleting from MongoDB:", apiError);
         toast({
           title: "⚠️ Partial Deletion",
-          description: "Group was deleted locally but an error occurred with decentralized storage.",
+          description: "Group was deleted locally but an error occurred with the database.",
           variant: "destructive",
           duration: 5000,
         });
@@ -212,7 +225,8 @@ export default function HomePage() {
           return;
         }
 
-        const localGroups = await persistentStorageService.loadGroups();
+        const localGroupsResult = await persistentStorageService.getUserGroups(address || '');
+        const localGroups = localGroupsResult.success ? (localGroupsResult.data || []) : [];
 
         // Filter groups where user is creator or member
         const userLocalGroups = localGroups.filter((group: any) => {
@@ -241,11 +255,11 @@ export default function HomePage() {
               address: member.address,
               nickname: member.nickname || "Member",
               joinedAt: new Date().toISOString(),
-              role: 'member',
+              role: 'member' as 'creator' | 'member',
               contribution: member.contributed || 0,
               auraPoints: member.auraPoints || 0,
               hasVoted: false,
-              status: member.status || "active"
+              status: (member.status || "active") as 'active' | 'inactive'
             })) : [],
             contributions: [],
             settings: {
@@ -255,7 +269,13 @@ export default function HomePage() {
               isActive: group.isActive !== undefined ? group.isActive : true,
               maxMembers: 10
             },
-            blockchain: { network: 'unknown', contractAddress: '' },
+            blockchain: { 
+              network: 'unknown', 
+              contractAddress: '', 
+              transactionHash: group.txHash || '',
+              blockNumber: '0',
+              gasUsed: '0'
+            },
             createdAt: group.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             version: '1.0',
@@ -308,18 +328,24 @@ export default function HomePage() {
           isActive: true,
           maxMembers: 10
         },
-        blockchain: { network: 'unknown', contractAddress: '' },
+        blockchain: { 
+          network: 'unknown', 
+          contractAddress: '', 
+          transactionHash: '',
+          blockNumber: '0',
+          gasUsed: '0'
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         version: '1.0',
         members: [
           {
-            address: address,
+            address: address || '',
             nickname: "Creator",
-            contributed: groupData.currentAmount,
+            contribution: groupData.currentAmount,
             auraPoints: 10,
-            status: "active",
-            role: "creator",
+            status: "active" as 'active' | 'inactive',
+            role: "creator" as 'creator' | 'member',
             joinedAt: new Date().toISOString(),
             hasVoted: false
           }
@@ -328,15 +354,13 @@ export default function HomePage() {
       };
 
       // Use the data persistence service to save the group locally
-      const localSuccess = await persistentStorageService.saveGroup(preparedGroupData);
+      const localSuccess = await persistentStorageService.saveGroup(preparedGroupData.groupId, preparedGroupData, address || '');
       
-      // Store in IPFS and Arweave via API
-      let ipfsHash = null;
-      let ipfsGatewayUrl = null;
-      let arweaveTransactionId = null;
+      // Store in MongoDB via API
+      let mongoDbId = null;
       
       try {
-        // Call the API to store in IPFS and Arweave
+        // Call the API to store in MongoDB
         const response = await fetch('/api/groups/store', {
           method: 'POST',
           headers: {
@@ -352,26 +376,24 @@ export default function HomePage() {
         const result = await response.json();
         
         if (result.success) {
-          console.log("✅ Group stored in decentralized storage:", result);
-          ipfsHash = result.ipfs?.ipfsHash;
-          ipfsGatewayUrl = result.ipfs?.gatewayUrl;
-          arweaveTransactionId = result.arweave?.transactionId;
+          console.log("✅ Group stored in MongoDB:", result);
+          mongoDbId = result.mongoDbId;
           
           toast({
-            title: "🌐 Group Stored in Decentralized Storage",
-            description: "Your group data is now stored on IPFS and Arweave for permanent access.",
+            title: "🌐 Group Stored in Database",
+            description: "Your group data is now stored in MongoDB for reliable access.",
             duration: 5000,
           });
         } else {
-          console.error("❌ Failed to store in decentralized storage:", result.error);
+          console.error("❌ Failed to store in MongoDB:", result.error);
           toast({
-            title: "⚠️ Decentralized Storage Warning",
-            description: "Group saved locally but failed to store on IPFS/Arweave. Some features may be limited.",
+            title: "⚠️ Database Storage Warning",
+            description: "Group saved locally but failed to store in MongoDB. Some features may be limited.",
             duration: 5000,
           });
         }
       } catch (storageError) {
-        console.error("❌ Error storing in decentralized storage:", storageError);
+        console.error("❌ Error storing in MongoDB:", storageError);
       }
 
       if (localSuccess) {
@@ -472,7 +494,8 @@ export default function HomePage() {
       try {
         console.log('📥 Loading user groups from localStorage...');
 
-        const allGroups = await persistentStorageService.loadGroups();
+        const allGroupsResult = await persistentStorageService.getUserGroups(address || '');
+        const allGroups = allGroupsResult.success ? (allGroupsResult.data || []) : [];
 
         // Filter groups for the current user
         const userSpecificGroups = allGroups.filter((group: any) => {
@@ -562,7 +585,6 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       window.concordiaApp = window.concordiaApp || {};
       window.concordiaApp.handleDeleteGroup = handleDeleteGroup;
-      // Also expose the disconnect function for external components
       window.concordiaApp.disconnect = () => {
         disconnect();
         handleWalletCleanup();
@@ -589,7 +611,8 @@ export default function HomePage() {
       // Force reload groups to ensure data consistency
       setTimeout(async () => {
         try {
-          const refreshedGroups = await persistentStorageService.loadGroups();
+          const refreshedGroupsResult = await persistentStorageService.getUserGroups(address || '');
+          const refreshedGroups = refreshedGroupsResult.success ? (refreshedGroupsResult.data || []) : [];
           const userSpecificGroups = refreshedGroups.filter((group: any) => {
             const isCreator = group.createdBy?.toLowerCase() === address?.toLowerCase();
             const isMember = group.members?.some((member: any) => 
@@ -602,17 +625,36 @@ export default function HomePage() {
             groupId: group.id,
             name: group.name || "Unnamed Group",
             description: group.description || group.goal || "No description",
-            targetAmount: group.targetAmount || 0,
-            currentAmount: group.currentAmount || 0,
-            contributionAmount: group.contributionAmount || 0,
-            duration: group.duration,
-            withdrawalDate: group.endDate || "unknown",
-            members: group.members || [],
-            status: group.status || "active",
-            nextContribution: group.nextContribution || "unknown",
-            createdBy: group.createdBy || "unknown",
+            goalAmount: group.targetAmount || 0,
+            creator: group.createdBy || "unknown",
+            duration: group.duration || 30,
+            withdrawalDate: group.endDate || new Date().toISOString(),
+            dueDay: group.dueDay || 1,
+            members: (group.members || []).map((member: any) => ({
+              address: member.address || "",
+              joinedAt: member.joinedAt || new Date().toISOString(),
+              role: (member.role || "member") as "creator" | "member",
+              contribution: member.contribution || 0,
+              auraPoints: member.auraPoints || 0,
+              hasVoted: member.hasVoted || false,
+              status: (member.status || "active") as "active" | "inactive"
+            })),
+            contributions: group.contributions || [],
+            settings: {
+              dueDay: group.dueDay || 1,
+              duration: group.duration || 30,
+              withdrawalDate: group.endDate || new Date().toISOString(),
+              isActive: group.isActive !== false,
+              maxMembers: group.maxMembers || 10
+            },
+            blockchain: {
+              transactionHash: group.txHash || "",
+              blockNumber: 0,
+              gasUsed: 0
+            },
             createdAt: group.createdAt || new Date().toISOString(),
-            isActive: group.isActive !== false,
+            updatedAt: group.updatedAt || new Date().toISOString(),
+            version: group.version || "1.0"
           }));
 
           setUserGroups(formattedGroups);

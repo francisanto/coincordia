@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { ipfsService } from '@/lib/ipfs-service'
+import connectToDatabase from '@/lib/mongodb'
+import Group from '@/lib/models/Group'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,16 +25,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Connect to MongoDB
+    await connectToDatabase()
+    
     // Verify user has permission to create invite for this group
-    const groupResult = await ipfsService.getGroupData(groupId)
-    if (!groupResult.success || !groupResult.data) {
+    const group = await Group.findOne({ groupId })
+    if (!group) {
       return NextResponse.json({
         success: false,
         error: 'Group not found'
       }, { status: 404 })
     }
 
-    const group = groupResult.data
     const isCreator = group.creator?.toLowerCase() === createdBy.toLowerCase()
     const isAdmin = createdBy.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_WALLET?.toLowerCase()
 
@@ -44,23 +47,26 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Store invite code in IPFS
-    const result = await ipfsService.storeInviteCode(groupId, code, createdBy)
+    // Store invite code in MongoDB
+    try {
+      group.inviteCode = code
+      group.updatedAt = new Date().toISOString()
+      await group.save()
+      
+      console.log('✅ Group code generated successfully:', code)
 
-    if (!result.success) {
+      return NextResponse.json({
+        success: true,
+        code: code,
+        groupId: groupId
+      })
+    } catch (error) {
+      console.error('❌ Error saving invite code to MongoDB:', error)
       return NextResponse.json({
         success: false,
-        error: result.error || 'Failed to generate group code'
+        error: 'Failed to save invite code'
       }, { status: 500 })
     }
-
-    console.log('✅ Group code generated successfully:', code)
-
-    return NextResponse.json({
-      success: true,
-      code: code,
-      ipfsHash: result.ipfsHash
-    })
 
   } catch (error) {
     console.error('❌ Error generating group code:', error)

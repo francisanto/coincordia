@@ -31,11 +31,9 @@ export interface SavingsGroup extends GroupMetadata {
   inviteCode?: string;
   status: string;
   isActive: boolean;
-  ipfsHash?: string;
-  ipfsGatewayUrl?: string;
-  arweaveTransactionId?: string;
-  arweaveStatus?: 'pending' | 'confirmed' | 'failed';
-  arweaveTimestamp?: string;
+  mongoDbId?: string;
+  mongoDbStatus?: 'pending' | 'confirmed' | 'failed';
+  mongoDbTimestamp?: string;
 }
 
 interface GroupDashboardProps {

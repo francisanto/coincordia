@@ -1,41 +1,36 @@
 
 import { arweaveService, GroupMetadata } from './arweave-service'
+import connectToDatabase from './mongodb'
+import Group from './models/Group'
 
 const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 interface StorageNode {
   name: string;
   endpoint: string;
-  type: 'ipfs' | 'arweave' | 'sia';
+  type: 'mongodb' | 'arweave' | 'sia';
   isActive: boolean;
 }
 
 class DecentralizedStorageService {
   private storageNodes: StorageNode[] = [
     {
-      name: 'IPFS Primary',
-      endpoint: 'https://4everland.io',
-      type: 'ipfs',
+      name: 'MongoDB Primary',
+      endpoint: process.env.MONGODB_URI || 'mongodb://localhost:27017/concordia',
+      type: 'mongodb',
       isActive: true,
     },
     {
-      name: 'IPFS Cloudflare',
-      endpoint: 'https://cloudflare-ipfs.com',
-      type: 'ipfs',
-      isActive: true,
-    },
-    {
-      name: 'IPFS DWeb',
-      endpoint: 'https://dweb.link',
-      type: 'ipfs',
+      name: 'Arweave Mainnet',
+      endpoint: 'https://arweave.net',
+      type: 'arweave',
       isActive: true,
     },
   ];
 
   async storeGroupData(groupData: any, userAddress: string): Promise<{
     success: boolean;
-    hash?: string;
-    gatewayUrls?: string[];
+    groupId?: string;
     error?: string;
   }> {
     try {
@@ -44,28 +39,34 @@ class DecentralizedStorageService {
         throw new Error('Access denied: You cannot store data for this group');
       }
 
-      console.log('🔄 Storing group data across decentralized networks...');
+      console.log('🔄 Storing group data in MongoDB...');
       
-      // Primary storage: IPFS
-      const ipfsResult = await ipfsService.storeGroupData(
-        groupData.groupId, 
-        groupData, 
-        userAddress
-      );
-
-      if (!ipfsResult.success) {
-        throw new Error(ipfsResult.error || 'Failed to store in IPFS');
+      // Connect to MongoDB
+      await connectToDatabase();
+      
+      // Check if group already exists
+      let group = await Group.findOne({ groupId: groupData.groupId });
+      
+      if (group) {
+        // Update existing group
+        Object.assign(group, groupData);
+        group.updatedAt = new Date().toISOString();
+      } else {
+        // Create new group
+        group = new Group({
+          ...groupData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
       }
+      
+      await group.save();
 
-      const gatewayUrls = ipfsService.getAllGatewayUrls(ipfsResult.ipfsHash!);
-
-      console.log('✅ Data stored successfully on IPFS');
-      console.log('🌐 Available on multiple gateways:', gatewayUrls.length);
+      console.log('✅ Data stored successfully in MongoDB');
 
       return {
         success: true,
-        hash: ipfsResult.ipfsHash,
-        gatewayUrls,
+        groupId: groupData.groupId
       };
     } catch (error) {
       console.error('❌ Error storing group data:', error);
@@ -76,27 +77,34 @@ class DecentralizedStorageService {
     }
   }
 
-  async loadGroupData(hash: string, userAddress: string): Promise<{
+  async loadGroupData(groupId: string, userAddress: string): Promise<{
     success: boolean;
     data?: GroupMetadata;
     error?: string;
   }> {
     try {
-      console.log('🔄 Loading group data from decentralized storage...');
+      console.log('🔄 Loading group data from MongoDB...');
       
-      const result = await ipfsService.getGroupData(hash, userAddress);
+      // Connect to MongoDB
+      await connectToDatabase();
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to load group data');
+      // Find group by groupId
+      const group = await Group.findOne({ groupId });
+      
+      if (!group) {
+        throw new Error('Group not found');
       }
 
       // Verify user has read access
-      if (!this.hasReadAccess(result.data!, userAddress)) {
+      if (!this.hasReadAccess(group.toObject(), userAddress)) {
         throw new Error('Access denied: You cannot access this group');
       }
 
       console.log('✅ Group data loaded successfully');
-      return result;
+      return {
+        success: true,
+        data: group.toObject()
+      };
     } catch (error) {
       console.error('❌ Error loading group data:', error);
       return {
@@ -110,9 +118,18 @@ class DecentralizedStorageService {
     try {
       console.log('🔄 Loading user groups for:', userAddress);
       
-      // This would need to be enhanced with a proper indexing system
-      // For now, return empty array - groups are loaded via API
-      return [];
+      // Connect to MongoDB
+      await connectToDatabase();
+      
+      // Find groups where user is creator or member
+      const groups = await Group.find({
+        $or: [
+          { creator: userAddress.toLowerCase() },
+          { 'members.address': userAddress.toLowerCase() }
+        ]
+      });
+      
+      return groups.map(group => group.toObject());
     } catch (error) {
       console.error('❌ Error loading user groups:', error);
       return [];

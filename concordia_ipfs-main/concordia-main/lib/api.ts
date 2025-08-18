@@ -1,13 +1,13 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
 
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   success: boolean
   data?: T
   error?: string
   details?: string
 }
 
-class ApiClient {
+export class ApiClient {
   private baseUrl: string
 
   constructor(baseUrl: string = API_BASE_URL) {
@@ -162,3 +162,6 @@ export const userApi = {
 export const analyticsApi = {
   get: (groupId: string) => apiClient.getAnalytics(groupId),
 }
+
+// Add default export for apiClient
+export default apiClient;

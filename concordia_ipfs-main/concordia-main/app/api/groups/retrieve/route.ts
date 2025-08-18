@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { arweaveService } from '@/lib/arweave-service'
-import { ipfsService } from '@/lib/ipfs-service'
+import connectToDatabase from '@/lib/mongodb'
+import Group from '@/lib/models/Group'
 
 export async function GET(request: Request) {
   try {
@@ -19,22 +20,32 @@ export async function GET(request: Request) {
       )
     }
 
-    if (!groupId && !ipfsHash && !arweaveId) {
+    if (!groupId && !arweaveId) {
       return NextResponse.json(
-        { success: false, error: 'Either groupId, ipfsHash, or arweaveId is required' },
+        { success: false, error: 'Either groupId or arweaveId is required' },
         { status: 400 }
       )
     }
 
-    let ipfsResult = { success: false, data: null, error: 'Not requested' }
-    let arweaveResult = { success: false, data: null, error: 'Not requested' }
+    let mongoResult: { success: boolean; data?: any; error?: string } = { success: false, error: 'Not requested' }
+    let arweaveResult: { success: boolean; data?: any; error?: string } = { success: false, error: 'Not requested' }
 
-    // Try to retrieve from IPFS if we have a hash or groupId
-    if (ipfsHash || groupId) {
-      if (ipfsHash) {
-        ipfsResult = await ipfsService.getGroupDataByHash(ipfsHash)
-      } else if (groupId) {
-        ipfsResult = await ipfsService.getGroupData(groupId, userAddress)
+    // Connect to MongoDB
+    await connectToDatabase()
+
+    // Try to retrieve from MongoDB if we have a groupId
+    if (groupId) {
+      try {
+        const group = await Group.findOne({ groupId }).lean()
+        if (group) {
+          mongoResult = { success: true, data: group }
+          console.log(`✅ Retrieved group ${groupId} from MongoDB`)
+        } else {
+          mongoResult = { success: false, error: 'Group not found in MongoDB' }
+        }
+      } catch (mongoError) {
+        console.error(`❌ Error retrieving group ${groupId} from MongoDB:`, mongoError)
+        mongoResult = { success: false, error: 'Database error' }
       }
     }
 
@@ -56,25 +67,25 @@ export async function GET(request: Request) {
     let secondaryData = null
     let secondarySource = null
 
-    if (ipfsResult.success && arweaveResult.success) {
+    if (mongoResult.success && arweaveResult.success) {
       // Both succeeded, use the most recently updated one as primary
-      const ipfsUpdatedAt = new Date(ipfsResult.data?.updatedAt || 0)
+      const mongoUpdatedAt = new Date(mongoResult.data?.updatedAt || 0)
       const arweaveUpdatedAt = new Date(arweaveResult.data?.updatedAt || 0)
 
-      if (ipfsUpdatedAt >= arweaveUpdatedAt) {
-        primaryData = ipfsResult.data
-        primarySource = 'ipfs'
+      if (mongoUpdatedAt >= arweaveUpdatedAt) {
+        primaryData = mongoResult.data
+        primarySource = 'mongodb'
         secondaryData = arweaveResult.data
         secondarySource = 'arweave'
       } else {
         primaryData = arweaveResult.data
         primarySource = 'arweave'
-        secondaryData = ipfsResult.data
-        secondarySource = 'ipfs'
+        secondaryData = mongoResult.data
+        secondarySource = 'mongodb'
       }
-    } else if (ipfsResult.success) {
-      primaryData = ipfsResult.data
-      primarySource = 'ipfs'
+    } else if (mongoResult.success) {
+      primaryData = mongoResult.data
+      primarySource = 'mongodb'
     } else if (arweaveResult.success) {
       primaryData = arweaveResult.data
       primarySource = 'arweave'
@@ -83,8 +94,8 @@ export async function GET(request: Request) {
     if (!primaryData) {
       return NextResponse.json({
         success: false,
-        error: 'Group data not found in either IPFS or Arweave',
-        ipfsError: ipfsResult.error,
+        error: 'Group data not found in either MongoDB or Arweave',
+        mongoError: mongoResult.error,
         arweaveError: arweaveResult.error
       }, { status: 404 })
     }
@@ -96,16 +107,15 @@ export async function GET(request: Request) {
       secondaryData,
       secondarySource,
       sources: {
-        ipfs: {
-          success: ipfsResult.success,
-          error: ipfsResult.error,
-          hash: ipfsHash || (ipfsResult.success ? ipfsResult.ipfsHash : null),
-          gatewayUrl: ipfsResult.success ? ipfsService.getGatewayUrl(ipfsResult.ipfsHash!) : null
+        mongodb: {
+          success: mongoResult.success,
+          error: mongoResult.error,
+          groupId: groupId
         },
         arweave: {
           success: arweaveResult.success,
           error: arweaveResult.error,
-          transactionId: arweaveId || (arweaveResult.success ? arweaveResult.transactionId : null)
+          transactionId: arweaveId || (arweaveResult.success && arweaveResult.data ? arweaveResult.data.arweaveId : null)
         }
       }
     })

@@ -22,8 +22,11 @@ RUN npm cache clean --force && npm install
 # Copy source files
 COPY . .
 
+# Build the application
+RUN npm run build
+
 # Set environment variables
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV PORT=3002
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -34,5 +37,5 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3002/api/health || exit 1
 
-# Start the application in development mode to avoid build issues
-CMD ["npm", "run", "dev"]
+# Start the application in production mode
+CMD ["npm", "run", "start"]

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, CheckCircle, AlertCircle, ExternalLink, Coins } from "lucide-react"
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { useAccount, useContractWrite, useWaitForTransaction } from "wagmi"
 import { parseEther } from "viem"
 import type { SavingsGroup } from "./group-dashboard"
 
@@ -34,13 +34,17 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
   const [isContributing, setIsContributing] = useState(false)
   const [callbackCalled, setCallbackCalled] = useState(false)
 
-  const { writeContract, data: hash, error, isPending } = useWriteContract()
+  const { write: writeContract, data: hash, error, isLoading: isPending } = useContractWrite({
+    address: CONCORDIA_CONTRACT_ADDRESS,
+    abi: CONTRIBUTION_ABI,
+    functionName: 'contribute'
+  })
 
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
     data: receipt,
-  } = useWaitForTransactionReceipt({
+  } = useWaitForTransaction({
     hash,
   })
 
@@ -66,9 +70,6 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
 
       // Call smart contract contribute function
       writeContract({
-        address: CONCORDIA_CONTRACT_ADDRESS,
-        abi: CONTRIBUTION_ABI,
-        functionName: "contribute",
         args: [BigInt(group.id)],
         value: parsedAmount,
       })
@@ -85,8 +86,8 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
         try {
           const auraPoints = calculateAuraPoints()
 
-          // Update BNB Greenfield with new contribution data
-          await updateContributionInGreenfield(group.id, {
+          // Update MongoDB with new contribution data
+          await updateContributionInMongoDB(group.id, {
             contributor: address,
             amount: group.contributionAmount,
             auraPoints,
@@ -274,17 +275,27 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
   )
 }
 
-// BNB Greenfield update function for contributions
-async function updateContributionInGreenfield(groupId: string, contributionData: any): Promise<void> {
+// MongoDB update function for contributions
+async function updateContributionInMongoDB(groupId: string, contributionData: any): Promise<void> {
   try {
-    console.log("Updating contribution in BNB Greenfield:", { groupId, contributionData })
+    console.log("Updating contribution in MongoDB:", { groupId, contributionData })
 
-    // Mock API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    // Call API to update contribution in MongoDB
+    const response = await fetch(`/api/groups/${groupId}/contributions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(contributionData),
+    })
 
-    console.log("Successfully updated contribution in BNB Greenfield")
+    if (!response.ok) {
+      throw new Error(`Failed to update contribution: ${response.statusText}`)
+    }
+
+    console.log("Successfully updated contribution in MongoDB")
   } catch (error) {
-    console.error("Error updating contribution in BNB Greenfield:", error)
+    console.error("Error updating contribution in MongoDB:", error)
     throw error
   }
 }

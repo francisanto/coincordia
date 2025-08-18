@@ -2,28 +2,39 @@
 
 import React from "react"
 import type { ReactNode } from "react"
-import { WagmiProvider, createConfig, http } from "wagmi"
-import { injected, metaMask } from "wagmi/connectors"
+import { WagmiConfig, createConfig } from "wagmi"
+import { InjectedConnector } from "wagmi/connectors/injected"
+import { MetaMaskConnector } from "wagmi/connectors/metaMask"
+import { publicProvider } from "wagmi/providers/public"
 import { opBNBTestnet } from "viem/chains"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 const config = createConfig({
-  chains: [opBNBTestnet],
-  transports: {
-    [opBNBTestnet.id]: http("https://opbnb-testnet-rpc.bnbchain.org"),
-  },
+  autoConnect: true,
   connectors: [
-    injected(),
-    metaMask(),
+    new InjectedConnector({
+      chains: [opBNBTestnet],
+      options: {
+        name: 'Injected',
+        shimDisconnect: true,
+      },
+    }),
+    new MetaMaskConnector({
+      chains: [opBNBTestnet],
+      options: {
+        shimDisconnect: true,
+      },
+    }),
   ],
+  provider: publicProvider(),
 })
 
 const queryClient = new QueryClient()
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <WagmiProvider config={config}>
+    <WagmiConfig config={config}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WagmiProvider>
+    </WagmiConfig>
   )
 }
