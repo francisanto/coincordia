@@ -21,6 +21,7 @@ import { NFTWalletDisplay } from "@/components/nft-wallet-display"
 import { AdminDashboard } from "@/components/admin-dashboard"
 import { GroupOptions } from "@/components/group-options"
 import { JoinGroupModal } from "@/components/join-group-modal"
+import { WalletConnect } from "@/components/wallet-connect"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { persistentStorageService } from '@/lib/persistent-storage';
@@ -40,146 +41,7 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function WalletConnection({ handleDisconnect }: { handleDisconnect: () => void }) {
-  const { address, isConnected, chainId } = useAccount()
-  const { connect, connectors, error, isPending } = useConnect()
-  const { disconnect } = useDisconnect()
-  const { switchChain } = useSwitchChain()
-
-  // Get chain ID from environment variable or default to opBNBTestnet.id
-  const requiredChainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "5611")
-  const isWrongNetwork = isConnected && chainId !== requiredChainId
-
-  // Log network configuration for debugging
-  useEffect(() => {
-    console.log("Network Configuration:")
-    console.log("- Required Chain ID:", requiredChainId)
-    console.log("- Current Chain ID:", chainId)
-    console.log("- Contract Address:", process.env.NEXT_PUBLIC_CONTRACT_ADDRESS)
-    console.log("- RPC URL:", process.env.NEXT_PUBLIC_RPC_URL)
-    console.log("- Network Name:", process.env.NEXT_PUBLIC_NETWORK)
-  }, [chainId, requiredChainId])
-
-  const handleConnect = async () => {
-    try {
-      console.log("🔗 Attempting to connect wallet...")
-      console.log("Available connectors:", connectors.map(c => c.name))
-
-      // Check if MetaMask is installed
-      if (typeof window !== 'undefined' && !window.ethereum) {
-        alert("MetaMask is not installed. Please install MetaMask extension first.")
-        return
-      }
-
-      // Try to find MetaMask connector
-      const metaMaskConnector = connectors.find((connector) => 
-        connector.name === "MetaMask" || connector.name === "Injected" || connector.name === "Browser Wallet"
-      )
-
-      if (metaMaskConnector) {
-        console.log("✅ Found MetaMask connector:", metaMaskConnector.name)
-        const result = await connect({ connector: metaMaskConnector })
-        console.log("🔗 Connection result:", result)
-      } else {
-        console.warn("⚠️ MetaMask connector not found, trying first available connector")
-        if (connectors.length > 0) {
-          console.log("🔄 Using first available connector:", connectors[0].name)
-          const result = await connect({ connector: connectors[0] })
-          console.log("🔗 Connection result:", result)
-        } else {
-          console.error("❌ No connectors available")
-          alert("No wallet connectors available. Please install MetaMask.")
-        }
-      }
-    } catch (err) {
-      console.error("❌ Failed to connect wallet:", err)
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      if (errorMessage.includes("User rejected")) {
-        alert("Connection was rejected. Please try again and approve the connection in MetaMask.")
-      } else if (errorMessage.includes("already pending")) {
-        alert("Connection is already pending. Please check MetaMask for the connection request.")
-      } else {
-        alert("Failed to connect wallet. Please make sure MetaMask is installed and unlocked.")
-      }
-    }
-  }
-
-  if (isPending) {
-    return (
-      <Button disabled className="bg-gradient-to-r from-[#F042FF] to-[#7226FF] text-white font-semibold px-6 py-2">
-        {"Connecting..."}
-      </Button>
-    )
-  }
-
-  if (isWrongNetwork) {
-    return (
-      <div className="flex flex-col items-end space-y-2">
-        <Button
-          onClick={() => switchChain({ chainId: requiredChainId })}
-          className="bg-red-500 hover:bg-red-700 text-white font-semibold px-6 py-2"
-        >
-          <Wallet className="mr-2 h-4 w-4" />
-          {"Switch to opBNB Testnet"}
-        </Button>
-        <p className="text-red-400 text-xs max-w-xs text-right">{"Please switch to opBNB Testnet to continue."}</p>
-      </div>
-    )
-  }
-
-  if (isConnected && address) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="border-concordia-light-purple text-concordia-light-purple hover:bg-concordia-light-purple/10 bg-transparent font-semibold"
-          >
-            <Wallet className="mr-2 h-4 w-4" />
-            {address.slice(0, 6) + "..." + address.slice(-4)}
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-concordia-dark-blue border-concordia-light-purple/30">
-          <DropdownMenuItem
-            onClick={() => navigator.clipboard.writeText(address)}
-            className="text-white hover:bg-concordia-light-purple/20 cursor-pointer"
-          >
-            {"Copy Address"}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => window.open("https://testnet.bscscan.com/address/" + address, "_blank")}
-            className="text-white hover:bg-concordia-light-purple/20 cursor-pointer"
-          >
-            {"View on Explorer"}
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onSelect={(e) => {
-              e.preventDefault();
-              handleDisconnect();
-            }}
-            className="text-red-400 hover:bg-red-400/20 cursor-pointer"
-          >
-            {"Disconnect"}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  }
-
-  return (
-    <div className="flex flex-col items-end space-y-2">
-      <Button
-        onClick={handleConnect}
-        className="bg-gradient-to-r from-concordia-pink to-concordia-light-purple hover:from-concordia-pink/80 hover:to-concordia-light-purple/80 text-white font-semibold px-6 py-2 shadow-lg"
-      >
-        <Wallet className="mr-2 h-4 w-4" />
-        {"Connect MetaMask"}
-      </Button>
-      {error && <p className="text-red-400 text-xs max-w-xs text-right">{error.message}</p>}
-    </div>
-  )
-}
+// WalletConnection component has been moved to components/wallet-connect.tsx
 
 export default function HomePage() {
   const [teamName, setTeamName] = useState("")
@@ -215,11 +77,11 @@ export default function HomePage() {
     setIsAdmin(address?.toLowerCase() === ADMIN_WALLET);
   }, [address, ADMIN_WALLET]);
 
-  // Handle wallet disconnection
-  const handleDisconnect = () => {
+  // Handle wallet disconnection - using the disconnect function from useDisconnect hook
+  // and adding additional cleanup
+  const handleWalletCleanup = () => {
     try {
-      console.log("🔌 Attempting to disconnect wallet...");
-      disconnect();
+      console.log("🔌 Cleaning up after wallet disconnection...");
       if (typeof window !== 'undefined') {
         localStorage.removeItem('wagmi.connected');
         localStorage.removeItem('wagmi.wallet');
@@ -232,9 +94,9 @@ export default function HomePage() {
       setActiveTab("home");
       setAutoRedirectDone(false);
       setIsAdmin(false); // Reset admin status on disconnect
-      console.log("✅ Wallet disconnected successfully and redirected to home");
+      console.log("✅ Wallet cleanup completed and redirected to home");
     } catch (error) {
-      console.error("❌ Error disconnecting wallet:", error);
+      console.error("❌ Error during wallet cleanup:", error);
       try {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('wagmi.connected');
@@ -250,6 +112,20 @@ export default function HomePage() {
       }
     }
   };
+  
+  // Set up a listener for disconnect events
+  useEffect(() => {
+    const handleDisconnect = () => {
+      handleWalletCleanup();
+    };
+    
+    // Add event listener for disconnect events
+    window.addEventListener('wagmi.disconnect', handleDisconnect);
+    
+    return () => {
+      window.removeEventListener('wagmi.disconnect', handleDisconnect);
+    };
+  }, []);
 
   // Handle group deletion from both localStorage and decentralized storage
   const handleDeleteGroup = useCallback(async (groupId: string) => {
@@ -686,6 +562,11 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       window.concordiaApp = window.concordiaApp || {};
       window.concordiaApp.handleDeleteGroup = handleDeleteGroup;
+      // Also expose the disconnect function for external components
+      window.concordiaApp.disconnect = () => {
+        disconnect();
+        handleWalletCleanup();
+      };
     }
   }, [isConnected, address, isAdmin, toast, handleDeleteGroup]); // Re-run if isConnected, address or isAdmin status changes
 
@@ -1284,7 +1165,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <WalletConnection handleDisconnect={handleDisconnect} />
+            <WalletConnect />
           </div>
         </div>
       </nav>
@@ -1356,7 +1237,7 @@ export default function HomePage() {
                           "Connect your MetaMask wallet to start creating savings groups and managing your funds securely on the blockchain."
                         }
                       </p>
-                      <WalletConnection handleDisconnect={handleDisconnect} />
+                      <WalletConnect />
                       <div className="mt-4 text-sm text-white/60">{"Make sure you're connected to opBNB Testnet"}</div>
                     </CardContent>
                   </Card>
