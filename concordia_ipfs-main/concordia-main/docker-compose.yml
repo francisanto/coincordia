@@ -19,8 +19,7 @@ services:
       # Backend variables
       - CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-0x31ff87832e0bc5eaee333d1db549829ba0376d45aa23a41e6b12bfe17c969595}
       - RPC_URL=${RPC_URL:-https://opbnb-testnet-rpc.bnbchain.org}
-      # Optional variables
-      - ARWEAVE_KEY=${ARWEAVE_KEY:-{}}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/concordia}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
@@ -30,6 +29,23 @@ services:
     restart: unless-stopped
     volumes:
       - concordia-data:/app/data
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   concordia-data:
+  mongodb-data:

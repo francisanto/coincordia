@@ -240,6 +240,78 @@ export default function HomePage() {
     }
   };
 
+  // Handle group deletion from both localStorage and decentralized storage
+  const handleDeleteGroup = useCallback(async (groupId: string) => {
+    try {
+      console.log('🗑️ Deleting group from localStorage:', groupId)
+      
+      // First delete from local storage
+      const success = await persistentStorageService.deleteGroup(groupId, address);
+
+      if (!success) {
+        throw new Error("Failed to delete group from localStorage")
+      }
+      
+      // Then delete from decentralized storage via API
+      try {
+        const response = await fetch(`/api/groups/${groupId}/delete`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Address': address || ''
+          },
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log("✅ Group deleted from decentralized storage:", result);
+          toast({
+            title: "🌐 Group Deleted from Decentralized Storage",
+            description: "Your group data has been removed from IPFS and marked as deleted in Arweave.",
+            duration: 5000,
+          });
+        } else {
+          console.error("⚠️ Warning: Failed to delete from decentralized storage:", result.error);
+          toast({
+            title: "⚠️ Decentralized Storage Warning",
+            description: "Group was deleted locally but may still exist in decentralized storage.",
+            variant: "destructive",
+            duration: 5000,
+          });
+        }
+      } catch (apiError) {
+        console.error("❌ API Error deleting from decentralized storage:", apiError);
+        toast({
+          title: "⚠️ Partial Deletion",
+          description: "Group was deleted locally but an error occurred with decentralized storage.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+      
+      // Update the UI by removing the deleted group
+      setUserGroups(prevGroups => prevGroups.filter(g => g.groupId !== groupId));
+      
+      toast({
+        title: "✅ Group Deleted",
+        description: "Your group has been successfully deleted.",
+        duration: 3000,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("❌ Error deleting group:", error);
+      toast({
+        title: "❌ Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete group",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return false;
+    }
+  }, [address, toast]);
+
   // Load groups from storage when wallet connects
   useEffect(() => {
     const loadGroups = async (userAddress?: string) => {
@@ -605,66 +677,6 @@ export default function HomePage() {
       window.concordiaApp.handleDeleteGroup = handleDeleteGroup;
     }
   }, [isConnected, address, isAdmin, toast, handleDeleteGroup]); // Re-run if isConnected, address or isAdmin status changes
-
-  // Handle group deletion from both localStorage and decentralized storage
-  const handleDeleteGroup = async (groupId: string) => {
-    try {
-      console.log('🗑️ Deleting group from localStorage:', groupId)
-      
-      // First delete from local storage
-      const success = await persistentStorageService.deleteGroup(groupId, address);
-
-      if (!success) {
-        throw new Error("Failed to delete group from localStorage")
-      }
-      
-      // Then delete from decentralized storage via API
-      try {
-        const response = await fetch(`/api/groups/${groupId}/delete`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Address': address || ''
-          },
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          console.log("✅ Group deleted from decentralized storage:", result);
-          toast({
-            title: "🌐 Group Deleted from Decentralized Storage",
-            description: "Your group data has been removed from IPFS and marked as deleted in Arweave.",
-            duration: 5000,
-          });
-        } else {
-          console.error("⚠️ Warning: Failed to delete from decentralized storage:", result.error);
-          toast({
-            title: "⚠️ Decentralized Storage Warning",
-            description: "Group was deleted locally but may still exist in decentralized storage.",
-            variant: "destructive",
-            duration: 5000,
-          });
-        }
-      } catch (apiError) {
-        console.error("❌ API Error deleting from decentralized storage:", apiError);
-        toast({
-          title: "⚠️ Decentralized Storage Warning",
-          description: "Group was deleted locally but may still exist in decentralized storage.",
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
-      
-      // Update user's groups in UI
-      setUserGroups(prevGroups => prevGroups.filter(group => group.id !== groupId))
-      toast.success("Group deleted successfully")
-      
-    } catch (error) {
-      console.error("❌ Error deleting group:", error)
-      toast.error("Failed to delete group")
-    }
-  }
 
   // Handle group creation and saving to localStorage
   const handleGroupCreated = async (newGroup: GroupMetadata) => {

@@ -1,7 +1,7 @@
 {
   "name": "concordia-backend",
   "version": "1.0.0",
-  "description": "Backend server for Concordia DApp with BNB Greenfield integration",
+  "description": "Backend server for Concordia DApp with MongoDB integration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,13 +11,16 @@
     "deploy": "pm2 start ecosystem.config.js"
   },
   "dependencies": {
-    "@bnb-chain/greenfield-js-sdk": "^2.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ethers": "^6.8.0",
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1",
-    "crypto": "^1.0.1"
+    "crypto": "^1.0.1",
+    "mongoose": "^7.5.0",
+    "mongodb": "^5.8.0",
+    "nodemailer": "^6.9.5",
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",
@@ -27,7 +30,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["blockchain", "defi", "savings", "bnb-greenfield", "opbnb", "smart-contracts"],
+  "keywords": ["blockchain", "defi", "savings", "mongodb", "opbnb", "smart-contracts"],
   "author": "Concordia Team",
   "license": "MIT"
 }

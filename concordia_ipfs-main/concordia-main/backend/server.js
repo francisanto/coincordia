@@ -1,15 +1,32 @@
 const express = require("express")
 const cors = require("cors")
-const { Client } = require("@bnb-chain/greenfield-js-sdk")
 const { ethers } = require("ethers")
 const multer = require("multer")
 const crypto = require("crypto")
+const path = require("path")
+const fs = require("fs")
 require("dotenv").config()
 const nodemailer = require("nodemailer");
 const { OpenAI } = require("openai");
+const mongoose = require('mongoose');
+const connectDB = require('./config/database');
 
 const app = express()
 const PORT = process.env.PORT || 3002
+
+// Connect to MongoDB
+let mongoConnected = false;
+connectDB().then(connection => {
+  if (connection) {
+    mongoConnected = true;
+    console.log('MongoDB connection established');
+  } else {
+    console.log('MongoDB connection failed, will use fallback storage');
+  }
+});
+
+// Import models
+const Group = require('./models/Group');
 
 // Middleware
 app.use(
@@ -21,56 +38,47 @@ app.use(
 app.use(express.json({ limit: "10mb" }))
 app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+
 // Multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 })
 
-// BNB Greenfield Configuration
-const GREENFIELD_CONFIG = {
-  endpoint: process.env.GREENFIELD_ENDPOINT || "https://gnfd-testnet-sp1.bnbchain.org",
-  chainId: process.env.GREENFIELD_CHAIN_ID || 5600,
-  bucketName: process.env.GREENFIELD_BUCKET || "concordia-data",
+// Admin Configuration
+const ADMIN_CONFIG = {
   adminAddress: process.env.ADMIN_ADDRESS || "0x0000000000000000000000000000000000000000", // Admin wallet address for access control
 }
 
-// Initialize Greenfield Client
-let greenfieldClient
+// Initialize MongoDB connection status
+let mongoDbStatus = {
+  connected: false,
+  lastCheck: null,
+  error: null
+};
 
-async function initializeGreenfield() {
+// Function to check MongoDB connection status
+async function checkMongoDBStatus() {
   try {
-    greenfieldClient = Client.create(GREENFIELD_CONFIG.endpoint, String(GREENFIELD_CONFIG.chainId))
-    console.log("✅ Greenfield client initialized")
-
-    // Create bucket if it doesn't exist
-    await createBucketIfNotExists()
-  } catch (error) {
-    console.error("❌ Failed to initialize Greenfield:", error)
-  }
-}
-
-async function createBucketIfNotExists() {
-  try {
-    const bucketInfo = await greenfieldClient.bucket.headBucket(GREENFIELD_CONFIG.bucketName)
-    console.log("✅ Bucket exists:", GREENFIELD_CONFIG.bucketName)
-  } catch (error) {
-    if (error.code === "NoSuchBucket") {
-      try {
-        await greenfieldClient.bucket.createBucket({
-          bucketName: GREENFIELD_CONFIG.bucketName,
-          creator: process.env.GREENFIELD_ACCOUNT_ADDRESS,
-          visibility: "VISIBILITY_TYPE_PUBLIC_READ",
-          chargedReadQuota: "0",
-          spAsDelegatedAgent: true,
-        })
-        console.log("✅ Bucket created:", GREENFIELD_CONFIG.bucketName)
-      } catch (createError) {
-        console.error("❌ Failed to create bucket:", createError)
-      }
+    if (mongoose.connection.readyState === 1) {
+      mongoDbStatus.connected = true;
+      mongoDbStatus.lastCheck = new Date();
+      mongoDbStatus.error = null;
+      return true;
     } else {
-      console.error("❌ Error checking bucket:", error)
+      mongoDbStatus.connected = false;
+      mongoDbStatus.lastCheck = new Date();
+      mongoDbStatus.error = "Connection not established";
+      return false;
     }
+  } catch (error) {
+    mongoDbStatus.connected = false;
+    mongoDbStatus.lastCheck = new Date();
+    mongoDbStatus.error = error.message;
+    console.error("❌ Error checking MongoDB connection:", error);
+    return false;
   }
 }
 
@@ -144,13 +152,12 @@ app.post("/api/notify-due-date", async (req, res) => {
   if (!groupId) return res.status(400).json({ error: "groupId required" });
 
   try {
-    // Fetch group data from Greenfield
-    const objectName = `groups/group_${groupId}.json`;
-    const objectData = await greenfieldClient.object.downloadFile({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName,
-    });
-    const group = JSON.parse(objectData.toString());
+    // Fetch group data from MongoDB
+    const group = await Group.findOne({ groupId });
+    
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
 
     // For each member with an email, send notification
     for (const member of group.members) {
@@ -181,21 +188,25 @@ app.post("/api/notify-due-date", async (req, res) => {
 // API Routes
 
 /**
- * Health Check
+ * Health Check with MongoDB status
  */
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "OK",
+app.get("/api/health", async (req, res) => {
+  // Check MongoDB status
+  await checkMongoDBStatus();
+  
+  res.json({ 
+    status: "ok", 
     timestamp: new Date().toISOString(),
     services: {
-      greenfield: !!greenfieldClient,
-      blockchain: !!contract,
-    },
+      mongodb: mongoConnected ? "connected" : "disconnected",
+      mongodb_details: mongoDbStatus,
+      blockchain: !!contract
+    }
   })
 })
 
 /**
- * Store Group Data in Greenfield
+ * Store Group Data in MongoDB
  */
 app.post("/api/groups/store", async (req, res) => {
   try {
@@ -205,48 +216,69 @@ app.post("/api/groups/store", async (req, res) => {
       return res.status(400).json({ error: "Group ID and data are required" })
     }
 
-    const objectName = `groups/group_${groupId}.json`
-    const objectId = generateObjectId()
-
+    // Generate invite code if not provided
+    const inviteCode = groupData.inviteCode || generateInviteCode();
+    const objectId = generateObjectId();
+    
     // Prepare metadata
     const metadata = {
       groupId,
       ...groupData,
-      inviteCode: generateInviteCode(), // Generate invite code
+      inviteCode,
       createdAt: new Date().toISOString(),
       objectId,
       version: "1.0",
     }
 
-    // Generate metadata hash
+    // Generate metadata hash for integrity verification
     const metadataString = JSON.stringify(metadata, Object.keys(metadata).sort())
     const metadataHash = crypto.createHash('sha256').update(metadataString).digest('hex')
+    metadata.metadataHash = metadataHash;
 
-    // Add metadata hash to the data
-    if (metadata.greenfield) {
-      metadata.greenfield.metadataHash = metadataHash
+    let mongoResult = null;
+    
+    // Check MongoDB connection status
+    await checkMongoDBStatus();
+    
+    // Store in MongoDB
+    try {
+      // Check if group already exists
+      let group = await Group.findOne({ groupId });
+      
+      if (group) {
+        // Update existing group
+        Object.assign(group, metadata);
+        mongoResult = await group.save();
+        console.log("✅ Group data updated in MongoDB:", groupId);
+      } else {
+        // Create new group
+        const newGroup = new Group(metadata);
+        mongoResult = await newGroup.save();
+        console.log("✅ Group data stored in MongoDB:", groupId);
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: group ? "Group updated successfully" : "Group created successfully",
+        groupId,
+        inviteCode: metadata.inviteCode,
+        metadataHash
+      });
+    } catch (mongoError) {
+      console.error("❌ Error storing group data in MongoDB:", mongoError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to store group data",
+        details: mongoError.message
+      });
     }
-
-    // Store in Greenfield
-    const createObjectTx = await greenfieldClient.object.createObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      creator: process.env.GREENFIELD_ACCOUNT_ADDRESS,
-      visibility: "VISIBILITY_TYPE_PUBLIC_READ",
-      contentType: "application/json",
-      redundancyType: "REDUNDANCY_EC_TYPE",
-      payload: Buffer.from(JSON.stringify(metadata)),
-    })
-
-    console.log("✅ Group data stored in Greenfield:", objectName)
-
+    
     res.json({
       success: true,
       objectId,
-      objectName,
       metadataHash,
-      transactionHash: createObjectTx.transactionHash,
       metadata,
+      storage: "mongodb"
     })
   } catch (error) {
     console.error("❌ Error storing group data:", error)
@@ -258,190 +290,190 @@ app.post("/api/groups/store", async (req, res) => {
 })
 
 /**
- * Get All Groups from Greenfield
+ * Get All Groups from MongoDB
  */
 app.get("/api/groups", async (req, res) => {
   try {
-    // List all objects in the groups folder
-    const listObjectsResponse = await greenfieldClient.object.listObjects({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      prefix: "groups/",
-      maxKeys: 1000,
-    })
-
-    if (!listObjectsResponse.objects || listObjectsResponse.objects.length === 0) {
-      return res.json({
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
+    // Get all groups from MongoDB
+    try {
+      const groups = await Group.find({}).lean();
+      console.log("✅ Retrieved all groups from MongoDB:", groups.length);
+      
+      res.json({
         success: true,
-        groups: [],
-      })
-    }
-
-    // Fetch all group data
-    const groups = []
-    for (const object of listObjectsResponse.objects) {
-      try {
-        const objectData = await greenfieldClient.object.downloadFile({
-          bucketName: GREENFIELD_CONFIG.bucketName,
-          objectName: object.objectName,
-        })
-
-        const groupData = JSON.parse(objectData.toString())
-        groups.push(groupData)
-      } catch (error) {
-        console.error(`Error fetching group ${object.objectName}:`, error)
-      }
-    }
-
-    console.log("✅ Retrieved all groups:", groups.length)
-
-    res.json({
-      success: true,
       groups,
-    })
+      source: "mongodb"
+    });
   } catch (error) {
-    console.error("❌ Error retrieving all groups:", error)
+    console.error("❌ Error retrieving all groups:", error);
     res.status(500).json({
       error: "Failed to retrieve groups",
       details: error.message,
-    })
+    });
   }
 })
 
 /**
- * Retrieve Group Data from Greenfield
+ * Retrieve Group Data from MongoDB with Greenfield fallback
  */
 app.get("/api/groups/:groupId", async (req, res) => {
   try {
-    const { groupId } = req.params
-    const objectName = `groups/group_${groupId}.json`
-
-    // Get object from Greenfield
-    const objectInfo = await greenfieldClient.object.headObject(GREENFIELD_CONFIG.bucketName, objectName)
-
-    if (!objectInfo) {
-      return res.status(404).json({ error: "Group not found" })
+    const { groupId } = req.params;
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
     }
-
-    // Download object content
-    const objectData = await greenfieldClient.object.downloadFile({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-    })
-
-    const metadata = JSON.parse(objectData.toString())
-
-    res.json({
-      success: true,
-      groupId,
-      metadata,
-      objectInfo,
-    })
+    
+    // Get group from MongoDB
+    try {
+      const group = await Group.findOne({ groupId }).lean();
+      if (group) {
+        console.log(`✅ Retrieved group ${groupId} from MongoDB`);
+        return res.json({
+          success: true,
+          metadata: group,
+          source: "mongodb"
+        });
+      } else {
+        return res.status(404).json({ error: "Group not found" });
+      }
+    } catch (mongoError) {
+      console.error(`❌ Error retrieving group ${groupId} from MongoDB:`, mongoError);
+      return res.status(500).json({ 
+        error: "Database error", 
+        details: mongoError.message 
+      });
+    }
+        }
   } catch (error) {
-    console.error("❌ Error retrieving group data:", error)
-
-    if (error.code === "NoSuchKey") {
-      return res.status(404).json({ error: "Group not found" })
-    }
-
+    console.error("❌ Error in /api/groups/:groupId endpoint:", error);
+    
     res.status(500).json({
       error: "Failed to retrieve group data",
       details: error.message,
-    })
+    });
+  }
+  } catch (error) {
+    console.error("❌ Error retrieving group data:", error);
+    
+    res.status(500).json({
+      error: "Failed to retrieve group data",
+      details: error.message,
+    });
   }
 })
 
 /**
- * Find Group by Code
+ * Find Group by Invite Code using MongoDB
  */
 app.get("/api/groups/code/:code", async (req, res) => {
   try {
-    const { code } = req.params
+    const { code } = req.params;
     
-    // List all objects in the groups folder
-    const listObjectsResponse = await greenfieldClient.object.listObjects({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      prefix: "groups/",
-      maxKeys: 1000,
-    })
-
-    if (!listObjectsResponse.objects || listObjectsResponse.objects.length === 0) {
-      return res.status(404).json({ error: "No groups found" })
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
     }
-
-    // Search through all groups for the code
-    for (const object of listObjectsResponse.objects) {
-      try {
-        const objectData = await greenfieldClient.object.downloadFile({
-          bucketName: GREENFIELD_CONFIG.bucketName,
-          objectName: object.objectName,
-        })
-
-        const groupData = JSON.parse(objectData.toString())
+    
+    // Find group by invite code in MongoDB
+    try {
+      let group = await Group.findOne({ inviteCode: code }).lean();
+      if (!group) {
+        // Try alternative field name
+        group = await Group.findOne({ code: code }).lean();
+      }
         
-        // Check if this group has the code
-        if (groupData.inviteCode === code || groupData.code === code) {
-          const groupId = groupData.id || groupData.groupId
+        if (group) {
+          console.log(`✅ Found group by code ${code} in MongoDB`);
           return res.json({
             success: true,
-            groupId,
-            group: groupData
-          })
+            groupId: group.groupId || group.id,
+            group,
+            source: "mongodb"
+          });
+        } else {
+          return res.status(404).json({ error: "Group not found with this invite code" });
         }
-      } catch (error) {
-        console.error(`Error checking group ${object.objectName}:`, error)
+      } catch (mongoError) {
+        console.error(`❌ Error finding group by code ${code} in MongoDB:`, mongoError);
+        return res.status(500).json({
+          error: "Database error",
+          details: mongoError.message
+        });
       }
-    }
-
-    res.status(404).json({ error: "Group not found with this code" })
   } catch (error) {
-    console.error("❌ Error finding group by code:", error)
+    console.error("❌ Error in /api/groups/code/:code endpoint:", error);
     res.status(500).json({
       error: "Failed to find group by code",
       details: error.message,
-    })
+    });
   }
 })
 
 /**
- * Update Group Data in Greenfield
+ * Update Group Data in MongoDB
  */
 app.put("/api/groups/:groupId", async (req, res) => {
   try {
-    const { groupId } = req.params
-    const { updateData } = req.body
+    const { groupId } = req.params;
+    const { updateData } = req.body;
 
-    const objectName = `groups/group_${groupId}.json`
-
-    // Get existing data
-    const existingData = await greenfieldClient.object.downloadFile({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-    })
-
-    const existingMetadata = JSON.parse(existingData.toString())
-
-    // Merge with update data
-    const updatedMetadata = {
-      ...existingMetadata,
-      ...updateData,
-      updatedAt: new Date().toISOString(),
-      version: (Number.parseFloat(existingMetadata.version) + 0.1).toFixed(1),
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
+    // Find and update the group in MongoDB
+    try {
+      // Find the existing group
+      const existingGroup = await Group.findOne({ groupId });
+      
+      if (!existingGroup) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      // Merge with update data
+      const updatedMetadata = {
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+        version: (Number.parseFloat(existingGroup.version || "1.0") + 0.1).toFixed(1),
     }
 
-    // Update object in Greenfield
-    const updateTx = await greenfieldClient.object.putObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      body: Buffer.from(JSON.stringify(updatedMetadata)),
-    })
+    // Update the group in MongoDB
+    const updatedGroup = await Group.findOneAndUpdate(
+      { groupId },
+      updatedMetadata,
+      { new: true }
+    );
 
-    console.log("✅ Group data updated in Greenfield:", objectName)
+    console.log("✅ Group data updated in MongoDB:", groupId);
 
     res.json({
       success: true,
       groupId,
-      transactionHash: updateTx.transactionHash,
-      metadata: updatedMetadata,
+      metadata: updatedGroup,
     })
   } catch (error) {
     console.error("❌ Error updating group data:", error)
@@ -453,21 +485,30 @@ app.put("/api/groups/:groupId", async (req, res) => {
 })
 
 /**
- * Delete Group Data from Greenfield
+ * Delete Group Data from MongoDB
  */
 app.delete("/api/groups/:groupId", async (req, res) => {
   try {
-    const { groupId } = req.params
-    const objectName = `groups/group_${groupId}.json`
-
-    // Delete object from Greenfield
-    await greenfieldClient.object.deleteObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-    })
-
-    console.log("✅ Group data deleted from Greenfield:", objectName)
-
+    const { groupId } = req.params;
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
+    // Delete the group from MongoDB
+    const deleteResult = await Group.deleteOne({ groupId });
+    
+    if (deleteResult.deletedCount === 0) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+    
+    console.log("✅ Group data deleted from MongoDB:", groupId);
+    
     res.json({
       success: true,
       message: "Group deleted successfully",
@@ -547,51 +588,44 @@ app.put("/api/groups/:groupId/update", async (req, res) => {
 })
 
 /**
- * Store Contribution Data
+ * Store Contribution Data in MongoDB
  */
 app.post("/api/contributions/store", async (req, res) => {
   try {
-    const { groupId, contributionData } = req.body
-
-    const objectName = `contributions/group_${groupId}_contributions.json`
-
-    let existingContributions = []
-
-    // Try to get existing contributions
-    try {
-      const existingData = await greenfieldClient.object.downloadFile({
-        bucketName: GREENFIELD_CONFIG.bucketName,
-        objectName: objectName,
-      })
-      existingContributions = JSON.parse(existingData.toString())
-    } catch (error) {
-      // File doesn't exist, start with empty array
-      console.log("Creating new contributions file for group:", groupId)
+    const { groupId, contributionData } = req.body;
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
     }
-
-    // Add new contribution
-    const newContribution = {
+    
+    // Import the Contribution model
+    const Contribution = require('./models/Contribution');
+    
+    // Create new contribution
+    const newContribution = new Contribution({
       ...contributionData,
+      groupId,
       id: generateObjectId(),
-      timestamp: new Date().toISOString(),
-    }
-
-    existingContributions.push(newContribution)
-
-    // Store updated contributions
-    const storeTx = await greenfieldClient.object.putObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      body: Buffer.from(JSON.stringify(existingContributions)),
-    })
-
-    console.log("✅ Contribution stored in Greenfield:", objectName)
-
+      timestamp: new Date()
+    });
+    
+    // Save to MongoDB
+    await newContribution.save();
+    
+    // Get total contributions count for this group
+    const totalContributions = await Contribution.countDocuments({ groupId });
+    
+    console.log(`✅ Contribution stored in MongoDB for group ${groupId}`);
+    
     res.json({
       success: true,
       contributionId: newContribution.id,
-      transactionHash: storeTx.transactionHash,
-      totalContributions: existingContributions.length,
+      totalContributions,
     })
   } catch (error) {
     console.error("❌ Error storing contribution:", error)
@@ -603,90 +637,84 @@ app.post("/api/contributions/store", async (req, res) => {
 })
 
 /**
- * Get Group Contributions
+ * Get Group Contributions from MongoDB
  */
 app.get("/api/contributions/:groupId", async (req, res) => {
   try {
-    const { groupId } = req.params
-    const objectName = `contributions/group_${groupId}_contributions.json`
-
-    const contributionsData = await greenfieldClient.object.downloadFile({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-    })
-
-    const contributions = JSON.parse(contributionsData.toString())
-
+    const { groupId } = req.params;
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
+    // Import the Contribution model
+    const Contribution = require('./models/Contribution');
+    
+    // Get contributions from MongoDB
+    const contributions = await Contribution.find({ groupId }).sort({ timestamp: -1 }).lean();
+    
+    console.log(`✅ Retrieved ${contributions.length} contributions for group ${groupId} from MongoDB`);
+    
     res.json({
       success: true,
       groupId,
       contributions,
       count: contributions.length,
-    })
+    });
   } catch (error) {
-    if (error.code === "NoSuchKey") {
-      return res.json({
-        success: true,
-        groupId: req.params.groupId,
-        contributions: [],
-        count: 0,
-      })
-    }
-
-    console.error("❌ Error retrieving contributions:", error)
+    console.error("❌ Error retrieving contributions:", error);
     res.status(500).json({
       error: "Failed to retrieve contributions",
       details: error.message,
-    })
+    });
   }
 })
 
 /**
- * Store Member Invites
+ * Store Member Invites in MongoDB
  */
 app.post("/api/invites/store", async (req, res) => {
   try {
-    const { groupId, inviteData } = req.body
-
-    const objectName = `invites/group_${groupId}_invites.json`
-
-    let existingInvites = []
-
-    // Try to get existing invites
-    try {
-      const existingData = await greenfieldClient.object.downloadFile({
-        bucketName: GREENFIELD_CONFIG.bucketName,
-        objectName: objectName,
-      })
-      existingInvites = JSON.parse(existingData.toString())
-    } catch (error) {
-      console.log("Creating new invites file for group:", groupId)
+    const { groupId, inviteData } = req.body;
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
     }
-
-    // Add new invite
-    const newInvite = {
+    
+    // Import the Invite model
+    const Invite = require('./models/Invite');
+    
+    // Create new invite
+    const newInvite = new Invite({
       ...inviteData,
+      groupId,
       id: generateObjectId(),
-      timestamp: new Date().toISOString(),
-      status: "pending",
-    }
-
-    existingInvites.push(newInvite)
-
-    // Store updated invites
-    const storeTx = await greenfieldClient.object.putObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      body: Buffer.from(JSON.stringify(existingInvites)),
-    })
-
-    console.log("✅ Invite stored in Greenfield:", objectName)
+      createdAt: new Date()
+    });
+    
+    // Save to MongoDB
+    await newInvite.save();
+    
+    // Get total invites count for this group
+    const totalInvites = await Invite.countDocuments({ groupId });
+    
+    console.log(`✅ Invite stored in MongoDB for group ${groupId}`)
 
     res.json({
       success: true,
       inviteId: newInvite.id,
-      transactionHash: storeTx.transactionHash,
-      totalInvites: existingInvites.length,
+      storage: "mongodb",
+      totalInvites: totalInvites,
     })
   } catch (error) {
     console.error("❌ Error storing invite:", error)
@@ -698,37 +726,38 @@ app.post("/api/invites/store", async (req, res) => {
 })
 
 /**
- * Get Group Invites
+ * Get Group Invites from MongoDB
  */
 app.get("/api/invites/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params
-    const objectName = `invites/group_${groupId}_invites.json`
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
+    // Import the Invite model
+    const Invite = require('./models/Invite');
 
-    const invitesData = await greenfieldClient.object.downloadFile({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-    })
-
-    const invites = JSON.parse(invitesData.toString())
-
+    // Get invites from MongoDB
+    const invites = await Invite.find({ groupId }).sort({ createdAt: -1 }).lean();
+    
+    console.log(`✅ Retrieved ${invites.length} invites for group ${groupId} from MongoDB`);
+    
     res.json({
       success: true,
       groupId,
       invites,
       count: invites.length,
-    })
+      source: "mongodb"
+    });
   } catch (error) {
-    if (error.code === "NoSuchKey") {
-      return res.json({
-        success: true,
-        groupId: req.params.groupId,
-        invites: [],
-        count: 0,
-      })
-    }
-
-    console.error("❌ Error retrieving invites:", error)
+    console.error("❌ Error retrieving invites:", error);
     res.status(500).json({
       error: "Failed to retrieve invites",
       details: error.message,
@@ -821,7 +850,7 @@ app.get("/api/blockchain/users/:address/groups", async (req, res) => {
 })
 
 /**
- * Upload File to Greenfield
+ * Upload File to MongoDB and Local Storage
  */
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
@@ -829,23 +858,52 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" })
     }
 
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
     const { originalname, buffer, mimetype } = req.file
     const sanitizedName = sanitizeFileName(originalname)
-    const objectName = `uploads/${Date.now()}_${sanitizedName}`
     const objectId = generateObjectId()
-
-    // Upload to Greenfield
-    const uploadTx = await greenfieldClient.object.createObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      creator: process.env.GREENFIELD_ACCOUNT_ADDRESS,
-      visibility: "VISIBILITY_TYPE_PUBLIC_READ",
+    const timestamp = Date.now()
+    const objectName = `uploads/${timestamp}_${sanitizedName}`
+    
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Save file to local filesystem
+    const filePath = path.join(uploadsDir, `${timestamp}_${sanitizedName}`);
+    fs.writeFileSync(filePath, buffer);
+    
+    // Generate URL for the file
+    const fileUrl = `/uploads/${timestamp}_${sanitizedName}`;
+    
+    // Import the File model
+    const File = require('./models/File');
+    
+    // Create file record in MongoDB
+    const fileRecord = new File({
+      objectId,
+      objectName,
+      originalName: originalname,
+      size: buffer.length,
       contentType: mimetype,
-      redundancyType: "REDUNDANCY_EC_TYPE",
-      payload: buffer,
-    })
-
-    console.log("✅ File uploaded to Greenfield:", objectName)
+      uploadedAt: new Date(),
+      url: fileUrl
+    });
+    
+    // Save to MongoDB
+    await fileRecord.save();
+    
+    console.log("✅ File uploaded to local storage and MongoDB:", objectName)
 
     res.json({
       success: true,
@@ -854,8 +912,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       originalName: originalname,
       size: buffer.length,
       contentType: mimetype,
-      transactionHash: uploadTx.transactionHash,
-      url: `${GREENFIELD_CONFIG.endpoint}/${GREENFIELD_CONFIG.bucketName}/${objectName}`,
+      storage: "mongodb",
+      url: fileUrl,
     })
   } catch (error) {
     console.error("❌ Error uploading file:", error)
@@ -946,7 +1004,9 @@ app.use((req, res) => {
 // Initialize and start server
 async function startServer() {
   try {
-    await initializeGreenfield()
+    // Connect to MongoDB
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/concordia');
+    console.log('✅ Connected to MongoDB');
 
     app.listen(PORT, () => {
       console.log(`🚀 Concordia Backend Server running on port ${PORT}`)
