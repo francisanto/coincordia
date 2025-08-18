@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run install:all && cd concordia-main && npm run dev",
-    "build": "cd concordia-main && npm run build",
-    "start": "cd concordia-main && npm run start",
-    "lint": "cd concordia-main && npm run lint",
-    "install:all": "npm install && cd concordia-main && npm install",
-    "clean": "rm -rf node_modules concordia-main/node_modules && npm run install:all",
-    "test:arweave": "node concordia-main/scripts/test-arweave.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "install:all": "npm install",
+    "clean": "rm -rf node_modules && npm install",
+    "test:arweave": "node scripts/test-arweave.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

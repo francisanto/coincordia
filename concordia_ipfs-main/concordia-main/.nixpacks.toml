@@ -1,9 +1,9 @@
 
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm"]
+nixPkgs = ["nodejs_16", "npm", "python3", "gcc", "git"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm cache clean --force", "npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
