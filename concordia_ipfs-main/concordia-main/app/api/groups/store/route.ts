@@ -1,8 +1,8 @@
 
 import { NextResponse } from 'next/server'
-import { arweaveService } from '@/lib/arweave-service'
 import connectToDatabase from '@/lib/mongodb'
 import Group from '@/lib/models/Group'
+import { GroupMetadata } from '@/lib/types'
 
 // Group model is imported from lib/models/Group
 
@@ -61,25 +61,16 @@ export async function POST(request: Request) {
       )
     }
     
-    // Store in Arweave
-    const arweaveResult = await arweaveService.storeGroupData(
-      groupData.groupId,
-      groupData,
-      userAddress
-    )
-
+    // Return success response with MongoDB information
     return NextResponse.json({
       success: true,
       data: {
         mongodb: {
           success: true,
-          groupId: groupData.groupId
+          groupId: groupData.groupId,
+          documentId: mongoResult._id ? mongoResult._id.toString() : 'unknown'
         },
-        arweave: {
-          transactionId: arweaveResult.transactionId,
-          success: arweaveResult.success
-        },
-        message: 'Group data stored successfully in MongoDB and Arweave'
+        message: 'Group data stored successfully in MongoDB'
       }
     })
 

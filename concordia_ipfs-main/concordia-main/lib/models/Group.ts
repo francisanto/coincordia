@@ -21,7 +21,7 @@ export interface IGroup extends Document {
   contributions?: any[];
   settings?: any;
   blockchain?: any;
-  arweave?: any;
+  mongodb?: any;
   inviteCode?: string;
   createdAt: string;
   updatedAt: string;

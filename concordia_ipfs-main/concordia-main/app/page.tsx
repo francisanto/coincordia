@@ -270,6 +270,7 @@ export default function HomePage() {
               maxMembers: 10
             },
             blockchain: { 
+              chainId: '0',
               network: 'unknown', 
               contractAddress: '', 
               transactionHash: group.txHash || '',

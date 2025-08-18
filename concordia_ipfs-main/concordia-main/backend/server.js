@@ -241,7 +241,10 @@ app.post("/api/groups/store", async (req, res) => {
     }
 
     // Generate metadata hash for integrity verification
-    const metadataString = JSON.stringify(metadata, Object.keys(metadata).sort())
+    // Create a copy of metadata without the hash field to avoid circular reference
+    const metadataForHash = {...metadata};
+    delete metadataForHash.metadataHash;
+    const metadataString = JSON.stringify(metadataForHash, Object.keys(metadataForHash).sort())
     const metadataHash = crypto.createHash('sha256').update(metadataString).digest('hex')
     metadata.metadataHash = metadataHash;
 
@@ -524,7 +527,7 @@ app.delete("/api/groups/:groupId", async (req, res) => {
 })
 
 /**
- * Update Group Metadata in Greenfield
+ * Update Group Metadata in MongoDB
  */
 app.put("/api/groups/:groupId/update", async (req, res) => {
   try {
@@ -534,50 +537,53 @@ app.put("/api/groups/:groupId/update", async (req, res) => {
     if (!updates) {
       return res.status(400).json({ error: "Updates are required" })
     }
-
-    const objectName = `groups/group_${groupId}.json`
-
-    // Get existing data
-    const existingData = await greenfieldClient.object.downloadFile({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-    })
-
-    const existingMetadata = JSON.parse(existingData.toString())
-
+    
+    // Check MongoDB connection status
+    const mongoStatus = await checkMongoDBStatus();
+    if (!mongoStatus.connected) {
+      return res.status(503).json({ 
+        error: "Database unavailable", 
+        details: "MongoDB connection is not available" 
+      });
+    }
+    
+    // Find the existing group
+    const existingGroup = await Group.findOne({ groupId });
+    
+    if (!existingGroup) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+    
     // Merge with updates
     const updatedMetadata = {
-      ...existingMetadata,
       ...updates,
       updatedAt: new Date().toISOString(),
-      version: (Number.parseFloat(existingMetadata.version) + 0.1).toFixed(1),
+      version: (Number.parseFloat(existingGroup.version || "1.0") + 0.1).toFixed(1),
     }
 
     // Generate new metadata hash
-    const crypto = require('crypto')
-    const metadataString = JSON.stringify(updatedMetadata, Object.keys(updatedMetadata).sort())
+    // Create a merged object for hashing
+    const mergedMetadata = {...existingGroup.toObject(), ...updatedMetadata};
+    // Remove hash field to avoid circular reference
+    delete mergedMetadata.metadataHash;
+    const metadataString = JSON.stringify(mergedMetadata, Object.keys(mergedMetadata).sort())
     const metadataHash = crypto.createHash('sha256').update(metadataString).digest('hex')
+    updatedMetadata.metadataHash = metadataHash;
 
-    // Update metadata hash in the data
-    if (updatedMetadata.greenfield) {
-      updatedMetadata.greenfield.metadataHash = metadataHash
-    }
+    // Update the group in MongoDB
+    const updatedGroup = await Group.findOneAndUpdate(
+      { groupId },
+      updatedMetadata,
+      { new: true }
+    );
 
-    // Update object in Greenfield
-    const updateTx = await greenfieldClient.object.putObject({
-      bucketName: GREENFIELD_CONFIG.bucketName,
-      objectName: objectName,
-      body: Buffer.from(JSON.stringify(updatedMetadata)),
-    })
-
-    console.log("✅ Group metadata updated in Greenfield:", objectName)
+    console.log("✅ Group metadata updated in MongoDB:", groupId)
 
     res.json({
       success: true,
       groupId,
       metadataHash,
-      transactionHash: updateTx.transactionHash,
-      metadata: updatedMetadata,
+      metadata: updatedGroup,
     })
   } catch (error) {
     console.error("❌ Error updating group metadata:", error)
@@ -803,7 +809,7 @@ app.get("/api/blockchain/groups/:groupId", async (req, res) => {
         dueDay: groupData[9],
         isActive: groupData[10],
         createdAt: groupData[11].toString(),
-        greenfieldObjectId: groupData[12],
+        mongoDbId: groupData[12],
       },
       members: memberDetails.map((member) => ({
         address: member.address,
@@ -932,7 +938,7 @@ app.get("/api/analytics/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params
 
-    // Get contributions from Greenfield
+    // Get contributions from MongoDB
     const contributionsResponse = await fetch(`${req.protocol}://${req.get("host")}/api/contributions/${groupId}`)
     const contributionsData = await contributionsResponse.json()
 

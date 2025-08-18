@@ -1,18 +1,18 @@
 
-import { arweaveService, GroupMetadata } from './arweave-service'
+import { GroupMetadata } from './types'
 
 const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 interface WalletStorageIndex {
   [walletAddress: string]: {
-    groups: string[]; // Array of Arweave transaction IDs
+    groups: string[]; // Array of MongoDB document IDs
     lastUpdated: string;
   }
 }
 
 interface GroupIndex {
   [groupId: string]: {
-    transactionId: string;
+    documentId: string;
     creator: string;
     members: string[];
     name: string;
@@ -21,22 +21,22 @@ interface GroupIndex {
 }
 
 class WalletStorageService {
-  private storageIndexTxId: string | null = null;
-  private groupIndexTxId: string | null = null;
+  private storageIndexDocId: string | null = null;
+  private groupIndexDocId: string | null = null;
 
   /**
-   * Initialize storage indexes from Arweave
+   * Initialize storage indexes from MongoDB
    */
   async initializeStorage(): Promise<void> {
     try {
       console.log('🔄 Initializing wallet storage service...');
       
-      // Try to load existing indexes from a known Arweave transaction ID
+      // Try to load existing indexes from a known MongoDB document ID
       // In production, this could be stored in a simple config or ENV var
-      const knownIndexTxId = process.env.NEXT_PUBLIC_STORAGE_INDEX_TXID;
+      const knownIndexDocId = process.env.NEXT_PUBLIC_STORAGE_INDEX_DOCID;
       
-      if (knownIndexTxId) {
-        this.storageIndexTxId = knownIndexTxId;
+      if (knownIndexDocId) {
+        this.storageIndexDocId = knownIndexDocId;
         console.log('✅ Storage service initialized with existing index');
       } else {
         // Create new indexes

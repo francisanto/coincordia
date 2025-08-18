@@ -26,13 +26,9 @@ const nextConfig = {
     return config;
   },
 
-  // Allow Arweave and other image domains
+  // Image domains configuration
   images: {
-    domains: [
-      'arweave.net',
-      'viewblock.io',
-      'arweave.app',
-    ],
+    domains: [],
   },
   output: 'standalone',
   experimental: {

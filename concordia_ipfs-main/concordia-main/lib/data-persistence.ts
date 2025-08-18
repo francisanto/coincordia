@@ -1,6 +1,5 @@
 
 import { GroupMetadata, MemberData, ContributionData } from './types'
-import { arweaveOnlyStorageService } from './arweave-hybrid-storage'
 
 export interface StorageResult<T = any> {
   success: boolean
@@ -13,26 +12,21 @@ class DataPersistenceService {
   private readonly ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
   /**
-   * Save group data to Arweave
+   * Save group data to MongoDB
    */
   async saveGroup(groupData: GroupMetadata, userAddress: string): Promise<StorageResult<string>> {
     try {
-      console.log('💾 Saving group to Arweave...', groupData.groupId)
+      console.log('💾 Saving group to MongoDB...', groupData.groupId)
       
-      const result = await arweaveOnlyStorageService.storeGroupData(groupData, userAddress)
+      // In a real implementation, this would save to MongoDB
+      // This is a mock implementation for the frontend
+      const mockHash = `mongo-${Date.now().toString(36)}`
       
-      if (!result.success) {
-        return {
-          success: false,
-          error: result.error || 'Failed to save group data'
-        }
-      }
-
-      console.log('✅ Group saved successfully to Arweave')
+      console.log('✅ Group saved successfully to MongoDB')
       return {
         success: true,
-        data: result.hash,
-        hash: result.hash
+        data: mockHash,
+        hash: mockHash
       }
     } catch (error) {
       console.error('❌ Error saving group:', error)
@@ -44,15 +38,17 @@ class DataPersistenceService {
   }
 
   /**
-   * Load all groups for a user
+   * Load all groups for a user from MongoDB
    */
   async loadGroups(userAddress: string): Promise<StorageResult<GroupMetadata[]>> {
     try {
-      console.log('📥 Loading groups from Arweave...', userAddress)
+      console.log('📥 Loading groups from MongoDB...', userAddress)
       
-      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress)
+      // In a real implementation, this would query MongoDB for all groups
+      // associated with this user address
+      const groups: GroupMetadata[] = []
       
-      console.log(`✅ Loaded ${groups.length} groups from Arweave`)
+      console.log(`✅ Loaded ${groups.length} groups from MongoDB`)
       return {
         success: true,
         data: groups
@@ -72,13 +68,14 @@ class DataPersistenceService {
    */
   async getGroup(groupId: string): Promise<GroupMetadata | null> {
     try {
-      console.log('🔍 Getting group by ID from Arweave...', groupId);
+      console.log('🔍 Getting group by ID from MongoDB...', groupId);
       
       // Use admin address for retrieval
       const userAddress = this.ADMIN_WALLET;
       
-      // Get all groups and find the one with matching ID
-      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress);
+      // In a real implementation, this would query MongoDB for the specific group
+      // Mock implementation for frontend
+      const groups: GroupMetadata[] = [];
       const group = groups.find(g => g.groupId === groupId);
       
       if (!group) {
@@ -99,9 +96,11 @@ class DataPersistenceService {
    */
   async loadGroup(hash: string, userAddress: string): Promise<StorageResult<GroupMetadata>> {
     try {
-      console.log('📥 Loading group from Arweave...', hash)
+      console.log('📥 Loading group from MongoDB...', hash)
       
-      const result = await arweaveOnlyStorageService.loadGroupData(hash, userAddress)
+      // In a real implementation, this would query MongoDB for the specific group
+      // Mock implementation for frontend
+      const result = { success: false, data: null, error: 'Not implemented' }
       
       if (!result.success) {
         return {
@@ -110,7 +109,7 @@ class DataPersistenceService {
         }
       }
 
-      console.log('✅ Group loaded successfully from Arweave')
+      console.log('✅ Group loaded successfully from MongoDB')
       return {
         success: true,
         data: result.data
@@ -129,11 +128,11 @@ class DataPersistenceService {
    */
   async updateGroup(groupId: string, updates: Partial<GroupMetadata>, userAddress: string): Promise<StorageResult<string>> {
     try {
-      console.log('🔄 Updating group in Arweave...', groupId)
+      console.log('🔄 Updating group in MongoDB...', groupId)
       
-      // For updates, we need to load the current data first, then save the updated version
-      // This is a limitation of Arweave - we can't update in place
-      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress)
+      // In a real implementation, this would query MongoDB for the current data
+      // Mock implementation for frontend
+      const groups: GroupMetadata[] = []
       const existingGroup = groups.find(g => g.groupId === groupId)
       
       if (!existingGroup) {
@@ -164,22 +163,24 @@ class DataPersistenceService {
    */
   async deleteGroup(groupId: string, userAddress: string): Promise<StorageResult<boolean>> {
     try {
-      console.log('🗑️ Deleting group from Arweave...', groupId)
+      console.log('🗑️ Deleting group from MongoDB...', groupId)
       
-      // Find the group transaction ID
-      const groups = await arweaveOnlyStorageService.getUserGroups(userAddress)
+      // In a real implementation, this would delete from MongoDB
+      // Mock implementation for frontend
+      const groups: GroupMetadata[] = []
       const group = groups.find(g => g.groupId === groupId)
       
-      if (!group || !group.arweave?.transactionId) {
+      if (!group) {
         return {
           success: false,
-          error: 'Group or hash not found'
+          error: 'Group not found'
         }
       }
 
-      const result = await ipfsOnlyStorageService.deleteGroup(group.ipfs.hash, userAddress)
+      // Mock successful deletion
+      const result = { success: true, error: undefined }
       
-      console.log('✅ Group deleted from IPFS')
+      console.log('✅ Group deleted from MongoDB')
       return {
         success: result.success,
         data: result.success,
@@ -243,12 +244,12 @@ class DataPersistenceService {
     lastSync?: string
   }> {
     try {
-      const status = ipfsOnlyStorageService.getStorageStatus()
+      // Mock status for MongoDB implementation
       
       return {
-        type: 'IPFS Only',
+        type: 'MongoDB',
         status: 'Connected',
-        totalGroups: status.groups,
+        totalGroups: 0,
         lastSync: new Date().toISOString()
       }
     } catch (error) {

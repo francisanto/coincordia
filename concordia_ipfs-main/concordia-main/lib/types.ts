@@ -49,9 +49,9 @@ export interface GroupSettings {
 }
 
 export interface BlockchainData {
+  chainId: string;
   contractAddress: string;
-  transactionHash: string;
-  blockNumber: string;
-  gasUsed: string;
-  network: string;
+  tokenAddress?: string;
+  transactionHash?: string;
+  mongoDbId?: string;
 }

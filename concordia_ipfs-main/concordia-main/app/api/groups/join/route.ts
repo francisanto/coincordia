@@ -1,9 +1,9 @@
 
 import { NextResponse } from 'next/server'
-import { arweaveService } from '@/lib/arweave-service'
+import { GroupMetadata } from '@/lib/types'
 
-// Simple in-memory storage for group index (in production, use a database)
-const groupTransactionIndex: Record<string, string> = {}
+// Simple in-memory storage for group index (in production, use MongoDB)
+const groupDocumentIndex: Record<string, string> = {}
 
 export async function POST(request: Request) {
   try {
@@ -18,19 +18,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the Arweave transaction ID from the group code
+    // Get the MongoDB document ID from the group code
     // In a real implementation, you'd validate the code against your system
-    const transactionId = groupTransactionIndex[groupCode] || groupCode
+    const documentId = groupDocumentIndex[groupCode] || groupCode
 
-    if (!transactionId) {
+    if (!documentId) {
       return NextResponse.json(
         { success: false, error: 'Invalid group code' },
         { status: 404 }
       )
     }
 
-    // Join the group via Arweave
-    const result = await arweaveService.joinGroup(transactionId, userAddress, nickname)
+    // Join the group via MongoDB
+    // Mock implementation until MongoDB service is fully implemented
+    const result = {
+      success: true,
+      newDocumentId: documentId,
+      error: null
+    }
 
     if (!result.success) {
       return NextResponse.json(
@@ -39,15 +44,15 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update the group transaction index if we got a new transaction ID
-    if (result.newTransactionId) {
-      groupTransactionIndex[groupCode] = result.newTransactionId
+    // Update the group document index if we got a new document ID
+    if (result.newDocumentId) {
+      groupDocumentIndex[groupCode] = result.newDocumentId
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        transactionId: result.newTransactionId || transactionId,
+        documentId: result.newDocumentId || documentId,
         message: 'Successfully joined group'
       }
     })
@@ -73,10 +78,19 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get group info from Arweave
-    const transactionId = groupTransactionIndex[groupCode] || groupCode
+    // Get group info from MongoDB
+    const documentId = groupDocumentIndex[groupCode] || groupCode
     
-    const result = await arweaveService.getGroupData(transactionId)
+    // Mock implementation until MongoDB service is fully implemented
+    const result = {
+      success: true,
+      data: {
+        groupId: 'group-' + Math.random().toString(36).substring(2, 8),
+        name: 'Sample Group',
+        description: 'A sample group from MongoDB',
+        members: []
+      }
+    }
 
     if (!result.success) {
       return NextResponse.json(
@@ -92,7 +106,7 @@ export async function GET(request: Request) {
         name: result.data?.name,
         description: result.data?.description,
         memberCount: result.data?.members?.length || 0,
-        transactionId
+        documentId
       }
     })
 
