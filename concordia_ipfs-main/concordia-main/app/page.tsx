@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Users, Lock, Trophy, Target, ArrowRight, Shield, Coins, Wallet, ChevronDown, Plus } from "lucide-react"
-import { useAccount, useConnect, useDisconnect, useSwitchNetwork } from "wagmi"
+import { useAccount, useConnect, useDisconnect, useSwitchNetwork, useNetwork } from "wagmi"
 import { opBNBTestnet } from "wagmi/chains"
 import { GroupDashboard, type SavingsGroup } from "@/components/group-dashboard"
 import { SmartContractIntegration } from "@/components/smart-contract-integration"
@@ -39,13 +39,14 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 }
 
 function WalletConnection({ handleDisconnect }: { handleDisconnect: () => void }) {
-  const { address, isConnected, chainId } = useAccount()
-  const { connect, connectors, error, isPending } = useConnect()
+  const { address, isConnected } = useAccount()
+  const { chain } = useNetwork()
+  const { connect, connectors, error, isLoading } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchNetwork } = useSwitchNetwork()
 
   const requiredChainId = opBNBTestnet.id
-  const isWrongNetwork = isConnected && chainId !== requiredChainId
+  const isWrongNetwork = isConnected && chain?.id !== requiredChainId
 
   const handleConnect = async () => {
     try {
@@ -91,7 +92,7 @@ function WalletConnection({ handleDisconnect }: { handleDisconnect: () => void }
     }
   }
 
-  if (isPending) {
+  if (isLoading) {
     return (
       <Button disabled className="bg-gradient-to-r from-[#F042FF] to-[#7226FF] text-white font-semibold px-6 py-2">
         {"Connecting..."}
@@ -466,7 +467,11 @@ export default function HomePage() {
         }
       } catch (error) {
         console.error("❌ Error loading user groups from MongoDB API:", error)
-        toast.error("Failed to load your groups from MongoDB")
+        toast({
+          title: "❌ Loading Error",
+          description: "Failed to load your groups from MongoDB",
+          variant: "destructive"
+        })
         setUserGroups([])
       } finally {
         setIsLoadingGroups(false)
@@ -488,13 +493,20 @@ export default function HomePage() {
       if (result.success) {
         // Update user's groups
         setUserGroups(prevGroups => prevGroups.filter(group => group.id !== groupId))
-        toast.success("Group deleted successfully from MongoDB")
+        toast({
+          title: "✅ Group Deleted",
+          description: "Group deleted successfully from MongoDB",
+        })
       } else {
         throw new Error(result.error)
       }
     } catch (error) {
       console.error("❌ Error deleting group from MongoDB:", error)
-      toast.error("Failed to delete group from MongoDB")
+      toast({
+        title: "❌ Delete Failed",
+        description: "Failed to delete group from MongoDB",
+        variant: "destructive"
+      })
     }
   }
 
@@ -530,7 +542,7 @@ export default function HomePage() {
 
       // Use the data persistence service to save the group to MongoDB
       const { dataPersistenceService } = await import('@/lib/data-persistence');
-      const result = await dataPersistenceService.saveGroup(groupData as SavingsGroup);
+      const result = await dataPersistenceService.saveGroup(groupData as unknown as SavingsGroup);
 
       if (result.success) {
         // Update user's groups and navigate to dashboard
@@ -761,19 +773,16 @@ export default function HomePage() {
     const newGroup: SavingsGroup = {
       id: groupId, // Use groupId from contract creation
       name: teamName || "Unnamed Group",
-      description: groupDescription || "No description provided.",
-      creator: address || "",
+      goal: groupDescription || "No description provided.",
+      createdBy: address || "",
       contributionAmount: parsedContributionAmount,
       currentAmount: parsedContributionAmount, // Initial amount in contract
       targetAmount: parsedContributionAmount * 10, // Assuming 10 members for target
-      goal: groupDescription || "No description provided.",
       duration: duration,
       endDate: endDate,
-      withdrawalDate: contractData.withdrawalDate, // From contract
       dueDay: dueDay,
       isActive: true,
       status: "active",
-      createdBy: address || "",
       members: [
         {
           address: address || "0xYourAddress",
@@ -1582,7 +1591,7 @@ export default function HomePage() {
 
                 {/* Admin Dashboard Component - Rendered only if isAdmin is true */}
                 {isAdmin ? (
-                  <AdminDashboard adminApiKey={adminApiKey} />
+                  <AdminDashboard adminApiKey={adminApiKey} isAdmin={isAdmin} />
                 ) : (
                   <Card className="bg-concordia-dark-blue/80 border-concordia-light-purple/30 backdrop-blur-sm p-6 text-center">
                     <CardContent>

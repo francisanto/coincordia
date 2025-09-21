@@ -250,8 +250,8 @@ export const CONCORDIA_CONTRACT_ABI = [
   },
 ] as const
 
-// Replace with your actual deployed contract address
-const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xe93ECeA7f56719e60cb03fc1608A5830793D95FF") as `0x${string}`;
+// Deployed contract address on opBNB Testnet
+const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x58ae7520F81DC3464574960B792D43A82BF0C3f1") as `0x${string}`;
 
 
 interface SmartContractIntegrationProps {
@@ -342,7 +342,7 @@ export function SmartContractIntegration({
       setMetadataId(tempObjectId)
 
       // Create comprehensive group metadata
-      const groupMetadata = ipfsService.createGroupMetadata({
+      const groupMetadata = {
         groupId: tempObjectId,
         name: teamName,
         description: groupDescription,
@@ -358,7 +358,7 @@ export function SmartContractIntegration({
         documentId: tempObjectId,
         collection: "groups",
         lastUpdated: new Date().toISOString(),
-      })
+      }
 
       setStorageStatus("Storing metadata on IPFS...")
 
@@ -416,13 +416,10 @@ export function SmartContractIntegration({
       console.log("- Duration:", durationSeconds)
       console.log("- Withdrawal Date:", Math.floor(finalDate))
       console.log("- Due Day:", Number(dueDay ? Number.parseInt(dueDay) : 1))
-      console.log("- Object ID:", storeResult.objectId || tempObjectId)
+      console.log("- Object ID:", tempObjectId)
       console.log("- Metadata Hash:", metadataHash)
       
       writeContract({
-        address: CONCORDIA_CONTRACT_ADDRESS,
-        abi: CONCORDIA_CONTRACT_ABI,
-        functionName: 'createGroup',
         args: [
           teamName || "Unnamed Group",
           groupDescription || "No description",
@@ -468,7 +465,7 @@ export function SmartContractIntegration({
 
           // Extract group ID from transaction receipt
           // In a real implementation, you would parse the GroupCreated event
-          const groupId = hash // Using tx hash as group ID for demo
+          const groupId = hash?.toString() || metadataId // Using tx hash as group ID for demo
 
           // Update metadata with blockchain transaction details
           const updatedMetadata = {
@@ -517,7 +514,7 @@ export function SmartContractIntegration({
             metadataHash: metadataHash,
           }
 
-          onSuccess?.(groupId, hash, contractData)
+          onSuccess?.(groupId, hash as unknown as `0x${string}`, contractData)
           setCallbackCalled(true)
         } catch (error) {
           console.error("❌ Error in success callback:", error)
@@ -535,7 +532,7 @@ export function SmartContractIntegration({
             metadataId: metadataId,
             metadataHash: metadataHash,
           }
-          onSuccess?.(hash, hash, basicContractData)
+          onSuccess?.(hash as unknown as `0x${string}`, hash as unknown as `0x${string}`, basicContractData)
           setCallbackCalled(true)
         }
       }

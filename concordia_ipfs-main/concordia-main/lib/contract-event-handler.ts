@@ -2,9 +2,8 @@
 import { useContractEvent } from 'wagmi'
 import { CONCORDIA_CONTRACT_ABI } from '@/lib/contract-abi'
 import { connectToMongoDB } from '@/lib/mongodb'
-import { toast } from 'react-hot-toast'
 
-const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x76a9C6d5EE759b0b5Ef4c7D9963523d247cBeF88") as `0x${string}`;
+const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x58ae7520F81DC3464574960B792D43A82BF0C3f1") as `0x${string}`;
 
 // Helper function to clean up MongoDB data for a group
 async function cleanupGroupData(groupId: string) {
@@ -44,8 +43,8 @@ export function useGroupDeletionHandler() {
     address: CONCORDIA_CONTRACT_ADDRESS,
     abi: CONCORDIA_CONTRACT_ABI,
     eventName: 'GroupDeleted',
-    onLogs(logs) {
-      logs.forEach(async (log) => {
+    onLogs: (logs: any[]) => {
+      logs.forEach(async (log: any) => {
         try {
           // Ensure log.args exists before destructuring
           if (!log.args) {
@@ -73,24 +72,24 @@ export function useGroupDeletionHandler() {
           // Delete the group data from MongoDB
           await cleanupGroupData(groupId.toString());
           
-          // Show toast notification if in browser environment
+          // Show notification if in browser environment
           if (typeof window !== 'undefined') {
-            toast.success(`Group ${groupId.toString()} has been deleted`);
+            console.log(`✅ Group ${groupId.toString()} has been deleted`);
           }
         } catch (error) {
           console.error('❌ Error handling group deletion event:', error);
         }
       });
     },
-  });
+  } as any);
 
   // Watch for withdrawal completion events
   useContractEvent({
     address: CONCORDIA_CONTRACT_ADDRESS,
     abi: CONCORDIA_CONTRACT_ABI,
     eventName: 'WithdrawalExecuted',
-    onLogs(logs) {
-      logs.forEach((log) => {
+    onLogs: (logs: any[]) => {
+      logs.forEach((log: any) => {
         try {
           // Ensure log.args exists before destructuring
           if (!log.args) {
@@ -108,32 +107,32 @@ export function useGroupDeletionHandler() {
             return;
           }
 
-          console.log('💰 Withdrawal completed for group:', groupId.toString(), 'Amount:', (totalAmount || 0n).toString());
+          console.log('💰 Withdrawal completed for group:', groupId.toString(), 'Amount:', (totalAmount || BigInt(0)).toString());
           
           // Notify user about successful completion
           if (typeof window !== 'undefined') {
             const event = new CustomEvent('groupCompleted', {
-              detail: { groupId: groupId.toString(), amount: (totalAmount || 0n).toString() }
+              detail: { groupId: groupId.toString(), amount: (totalAmount || BigInt(0)).toString() }
             });
             window.dispatchEvent(event);
             
-            // Show toast notification
-            toast.success(`Withdrawal completed for group ${groupId.toString()}`);
+            // Show notification
+            console.log(`✅ Withdrawal completed for group ${groupId.toString()}`);
           }
         } catch (error) {
           console.error('❌ Error handling withdrawal event:', error);
         }
       });
     },
-  });
+  } as any);
 
   // Watch for emergency withdrawal events
   useContractEvent({
     address: CONCORDIA_CONTRACT_ADDRESS,
     abi: CONCORDIA_CONTRACT_ABI,
     eventName: 'EmergencyWithdrawal',
-    onLogs(logs) {
-      logs.forEach((log) => {
+    onLogs: (logs: any[]) => {
+      logs.forEach((log: any) => {
         try {
           // Ensure log.args exists before destructuring
           if (!log.args) {
@@ -152,7 +151,7 @@ export function useGroupDeletionHandler() {
             return;
           }
 
-          console.log('🚨 Emergency withdrawal for group:', groupId.toString(), 'Executor:', executor || 'unknown', 'Penalty:', (penaltyAmount || 0n).toString());
+          console.log('🚨 Emergency withdrawal for group:', groupId.toString(), 'Executor:', executor || 'unknown', 'Penalty:', (penaltyAmount || BigInt(0)).toString());
           
           // Notify user about emergency withdrawal
           if (typeof window !== 'undefined') {
@@ -160,13 +159,13 @@ export function useGroupDeletionHandler() {
               detail: { 
                 groupId: groupId.toString(), 
                 executor: executor || 'unknown', 
-                penalty: (penaltyAmount || 0n).toString() 
+                penalty: (penaltyAmount || BigInt(0)).toString() 
               }
             });
             window.dispatchEvent(event);
             
-            // Show toast notification
-            toast.error(`Emergency withdrawal executed for group ${groupId.toString()}`);
+            // Show notification
+            console.log(`🚨 Emergency withdrawal executed for group ${groupId.toString()}`);
           }
           
           // Clean up MongoDB data for this group
@@ -176,5 +175,5 @@ export function useGroupDeletionHandler() {
         }
       });
     },
-  });
+  } as any);
 }

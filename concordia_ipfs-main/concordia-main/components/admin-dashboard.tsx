@@ -52,12 +52,12 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
         totalContributions: 0,
         activeGroups: 0
       })
-      
+
       toast({
         title: "✅ Admin Data Loaded",
         description: `Loaded ${data.groups?.length || 0} groups from MongoDB`,
       })
-      
+
       if (onVerify) {
         onVerify(key)
       }
@@ -73,7 +73,7 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
     }
   }
 
-  // Check if user is admin based on address
+  // Auto-load if admin and key provided
   useEffect(() => {
     if (isAdmin && adminApiKey && !groups.length) {
       loadAdminData(adminApiKey)
@@ -128,7 +128,7 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
                   />
                 </div>
                 <Button
-                  onClick={loadAdminData}
+                  onClick={() => loadAdminData()}
                   disabled={loading}
                   className="bg-concordia-pink hover:bg-concordia-pink/80"
                 >
@@ -149,7 +149,7 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-concordia-purple/20 border-concordia-light-purple/30">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
@@ -161,7 +161,7 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-concordia-purple/20 border-concordia-light-purple/30">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
@@ -173,7 +173,7 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-concordia-purple/20 border-concordia-light-purple/30">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">

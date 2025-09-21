@@ -8,7 +8,7 @@ import { opBNBTestnet } from "wagmi/chains"
 import { publicProvider } from "wagmi/providers/public"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-const { chains, provider } = configureChains(
+const { chains, publicClient } = configureChains(
   [opBNBTestnet],
   [publicProvider()]
 )
@@ -24,7 +24,7 @@ const config = createConfig({
       },
     }),
   ],
-  provider,
+  publicClient,
 })
 
 export function Providers({ children }: { children: ReactNode }) {

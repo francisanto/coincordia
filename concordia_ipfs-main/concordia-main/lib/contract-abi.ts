@@ -193,4 +193,23 @@ export const CONCORDIA_CONTRACT_ABI = [
     name: "Contributed",
     type: "event",
   },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "groupId", type: "uint256" },
+      { indexed: false, name: "totalAmount", type: "uint256" },
+    ],
+    name: "WithdrawalExecuted",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "groupId", type: "uint256" },
+      { indexed: true, name: "executor", type: "address" },
+      { indexed: false, name: "penaltyAmount", type: "uint256" },
+    ],
+    name: "EmergencyWithdrawal",
+    type: "event",
+  },
 ] as const

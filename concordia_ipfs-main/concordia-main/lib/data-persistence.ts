@@ -148,6 +148,57 @@ class DataPersistenceService {
     }
   }
 
+  // Get a single group by ID
+  async getGroup(groupId: string): Promise<SavingsGroup | null> {
+    try {
+      console.log('📥 Getting group from MongoDB:', groupId);
+      const client = await connectToMongoDB();
+      const collection = client.db().collection(this.collectionName);
+      const group = await collection.findOne({ id: groupId });
+      
+      return group as unknown as SavingsGroup || null;
+    } catch (error) {
+      console.error('❌ Error getting group from MongoDB:', error);
+      return null;
+    }
+  }
+
+  // Update group in MongoDB
+  async updateGroup(groupId: string, groupData: SavingsGroup): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔄 Updating group in MongoDB:', groupId);
+      const client = await connectToMongoDB();
+      const collection = client.db().collection(this.collectionName);
+      
+      // Add MongoDB metadata
+      const groupWithMetadata = {
+        ...groupData,
+        updatedAt: new Date().toISOString(),
+        mongodb: {
+          documentId: groupId,
+          collection: this.collectionName,
+          lastUpdated: new Date().toISOString()
+        }
+      };
+      
+      // Update the group
+      await collection.updateOne(
+        { id: groupId },
+        { $set: groupWithMetadata },
+        { upsert: true }
+      );
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error updating group in MongoDB:', error);
+      
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
   // Update group metadata in MongoDB
   async updateGroupMetadata(groupId: string, updates: any): Promise<{ success: boolean; error?: string; metadataHash?: string }> {
     try {

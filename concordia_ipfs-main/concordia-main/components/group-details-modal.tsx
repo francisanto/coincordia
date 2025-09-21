@@ -3,7 +3,8 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins } from "lucide-react"
+import { Calendar, Users, DollarSign, Clock, ShieldCheck, Tag, Coins, Copy } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import type { SavingsGroup } from "./group-dashboard"
 
 interface GroupDetailsModalProps {
@@ -13,6 +14,8 @@ interface GroupDetailsModalProps {
 }
 
 export function GroupDetailsModal({ group, isOpen, onClose }: GroupDetailsModalProps) {
+  const { toast } = useToast()
+  
   if (!group) return null
 
   const getStatusColor = (status: string) => {
@@ -110,11 +113,13 @@ export function GroupDetailsModal({ group, isOpen, onClose }: GroupDetailsModalP
                   <span className="text-white/90 text-sm mr-2">Invite Code: <span className="font-mono font-bold">{group.inviteCode}</span></span>
                   <button
                      onClick={() => {
-                       navigator.clipboard.writeText(group.inviteCode);
-                       toast({
-                         title: "✅ Copied",
-                         description: "Invite code copied to clipboard",
-                       });
+                       if (group.inviteCode) {
+                         navigator.clipboard.writeText(group.inviteCode);
+                         toast({
+                           title: "✅ Copied",
+                           description: "Invite code copied to clipboard",
+                         });
+                       }
                      }}
                      className="h-7 w-7 p-0 bg-transparent hover:bg-concordia-light-purple/20 rounded-full flex items-center justify-center"
                    >

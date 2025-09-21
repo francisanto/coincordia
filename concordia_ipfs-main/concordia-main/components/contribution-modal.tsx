@@ -20,7 +20,7 @@ const CONTRIBUTION_ABI = [
   },
 ] as const
 
-const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x76a9C6d5EE759b0b5Ef4c7D9963523d247cBeF88") as `0x${string}`;
+const CONCORDIA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x58ae7520F81DC3464574960B792D43A82BF0C3f1") as `0x${string}`;
 
 interface ContributionModalProps {
   isOpen: boolean
@@ -45,7 +45,7 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
     isSuccess: isConfirmed,
     data: receipt,
   } = useWaitForTransaction({
-    hash,
+    hash: hash as `0x${string}` | undefined,
   })
 
   const calculateAuraPoints = () => {
@@ -96,7 +96,7 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
             isEarly: new Date() < new Date(group.nextContribution),
           })
 
-          onSuccess(group.id, group.contributionAmount, hash, auraPoints)
+          onSuccess(group.id, group.contributionAmount, hash as unknown as `0x${string}`, auraPoints)
           setCallbackCalled(true)
 
           setTimeout(() => {
@@ -105,7 +105,7 @@ export function ContributionModal({ isOpen, onClose, group, onSuccess }: Contrib
         } catch (error) {
           console.error("Error updating MongoDB:", error)
             // Still call onSuccess even if MongoDB update fails
-          onSuccess(group.id, group.contributionAmount, hash, calculateAuraPoints())
+          onSuccess(group.id, group.contributionAmount, hash as unknown as `0x${string}`, calculateAuraPoints())
           setCallbackCalled(true)
         }
       }
@@ -281,7 +281,7 @@ async function updateContributionInMongoDB(groupId: string, contributionData: an
     console.log("Updating contribution in MongoDB:", { groupId, contributionData })
 
     // Use the data persistence service to save the contribution
-    const dataPersistenceService = await import('@/lib/data-persistence')
+    const { dataPersistenceService } = await import('@/lib/data-persistence')
     await dataPersistenceService.saveContribution(groupId, contributionData)
 
     console.log("Successfully updated contribution in MongoDB")

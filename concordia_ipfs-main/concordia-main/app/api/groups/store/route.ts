@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectToMongoDB } from '@/lib/mongodb'
 
-const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
+const ADMIN_WALLET = process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
 
 export async function POST(request: NextRequest) {
   try {

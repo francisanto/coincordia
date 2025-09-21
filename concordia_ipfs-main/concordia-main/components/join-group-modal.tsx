@@ -294,7 +294,7 @@ async function findGroupByCode(code: string): Promise<string | null> {
   try {
     // First, try to find in backend API
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://concordia-backend-production.up.railway.app/api'}/groups/code/${code}`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/groups/code/${code}`)
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.groupId) {
@@ -322,7 +322,7 @@ async function getGroupInfo(groupId: string): Promise<any | null> {
   try {
     // First, try to get from backend API
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://concordia-backend-production.up.railway.app/api'}/groups/${groupId}`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/groups/${groupId}`)
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.group) {
@@ -376,7 +376,7 @@ async function joinGroup(groupId: string, address: string, nickname: string): Pr
       role: "member",
       contributed: 0,
       auraPoints: 5, // Initial aura points
-      status: "active"
+      status: "active" as const
     }
     
     if (!group.members) {
@@ -384,10 +384,14 @@ async function joinGroup(groupId: string, address: string, nickname: string): Pr
     }
     
     group.members.push(newMember)
-    group.updatedAt = new Date().toISOString()
+    // Update the group with new member
+    const updatedGroup = {
+      ...group,
+      updatedAt: new Date().toISOString()
+    }
     
     // Update the group in localStorage
-    const result = await dataPersistenceService.updateGroup(groupId, group)
+    const result = await dataPersistenceService.updateGroup(groupId, updatedGroup)
     
     if (!result.success) {
       throw new Error("Failed to update group in MongoDB")
