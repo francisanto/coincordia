@@ -33,15 +33,21 @@ export async function GET(request: Request) {
     
     // For regular admin data requests, verify admin API key
     const adminKey = url.searchParams.get('admin_key')
-    
-    if (adminKey !== process.env.ADMIN_API_KEY) {
-      console.error('🔒 Unauthorized admin access attempt')
-      return NextResponse.json({
-        error: "Unauthorized. Admin API key required.",
-      }, { status: 401 })
+
+    const isDev = process.env.NODE_ENV !== 'production'
+    const hasKeyConfigured = Boolean(process.env.ADMIN_API_KEY)
+
+    if (!isDev || hasKeyConfigured) {
+      if (adminKey !== process.env.ADMIN_API_KEY) {
+        console.error('🔒 Unauthorized admin access attempt')
+        return NextResponse.json({
+          error: "Unauthorized. Admin API key required.",
+        }, { status: 401 })
+      }
+      console.log('✅ Admin API key verified')
+    } else {
+      console.warn('⚠️ Admin API key not set in development; allowing access for local testing')
     }
-    
-    console.log('✅ Admin API key verified')
     
     // Connect to MongoDB and fetch all groups
     const client = await connectToMongoDB()

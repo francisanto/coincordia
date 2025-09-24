@@ -1,8 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { connectToMongoDB } from '@/lib/mongodb'
+import { ipfsService } from '@/lib/ipfs-service'
 
-const ADMIN_WALLET = '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
+const ADMIN_WALLET = (process.env.ADMIN_ADDRESS || '0x0000000000000000000000000000000000000000').toLowerCase()
 
 export async function GET(
   request: NextRequest,
@@ -21,7 +22,7 @@ export async function GET(
     }
 
     // Check if user is admin
-    const isAdmin = userAddress?.toLowerCase() === ADMIN_WALLET.toLowerCase()
+    const isAdmin = (userAddress || '').toLowerCase() === ADMIN_WALLET
 
     // Connect to MongoDB
     const client = await connectToMongoDB();

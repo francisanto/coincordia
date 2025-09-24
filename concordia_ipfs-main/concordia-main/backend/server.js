@@ -111,27 +111,35 @@ function sanitizeFileName(fileName) {
   return fileName.replace(/[^a-zA-Z0-9.-]/g, "_")
 }
 
-// Configure nodemailer (example with Gmail SMTP)
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.NOTIFY_EMAIL, // set in .env
-    pass: process.env.NOTIFY_EMAIL_PASS, // set in .env
-  },
-});
+// Configure nodemailer (example with Gmail SMTP) - guard missing env
+let transporter = null
+if (process.env.NOTIFY_EMAIL && process.env.NOTIFY_EMAIL_PASS) {
+  transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.NOTIFY_EMAIL,
+      pass: process.env.NOTIFY_EMAIL_PASS,
+    },
+  })
+} else {
+  console.warn("[backend] Email credentials not set; email features are disabled in development.")
+}
 
-// Configure OpenAI
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Configure OpenAI - guard missing key
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
 
 // Helper to generate AI message
 async function generateAIDueDateMessage(memberName, groupName, dueDate) {
   const prompt = `Write a friendly reminder email for ${memberName} that their payment is due for the group savings \"${groupName}\" on ${dueDate}.`;
+  if (!openai) {
+    return `Reminder: Your payment for the group savings "${groupName}" is due on ${dueDate}.`;
+  }
   const completion = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages: [{ role: "user", content: prompt }],
     max_tokens: 120,
-  });
-  return completion.choices[0].message.content;
+  })
+  return completion.choices[0].message.content
 }
 
 // Endpoint to send due date notifications
@@ -151,20 +159,21 @@ app.post("/api/notify-due-date", async (req, res) => {
     // For each member with an email, send notification
     for (const member of group.members) {
       if (member.email) {
-        // Generate AI message
         const message = await generateAIDueDateMessage(
           member.nickname,
           group.name,
-          group.nextContribution // or due date
-        );
-
-        // Send email
-        await transporter.sendMail({
-          from: process.env.NOTIFY_EMAIL,
-          to: member.email,
-          subject: `Payment Due Reminder: ${group.name}`,
-          text: message,
-        });
+          group.nextContribution
+        )
+        if (transporter) {
+          await transporter.sendMail({
+            from: process.env.NOTIFY_EMAIL,
+            to: member.email,
+            subject: `Payment Due Reminder: ${group.name}`,
+            text: message,
+          })
+        } else {
+          console.log(`[backend] Email disabled - would send to ${member.email}: ${message}`)
+        }
       }
     }
     res.json({ success: true, message: "Notifications sent" });

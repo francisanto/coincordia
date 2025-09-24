@@ -3,7 +3,7 @@ import { ipfsService } from '@/lib/ipfs-service'
 import { connectToMongoDB } from '@/lib/mongodb'
 import { v4 as uuidv4 } from 'uuid'
 
-const ADMIN_WALLET = process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
+const ADMIN_WALLET = (process.env.ADMIN_ADDRESS || '0x0000000000000000000000000000000000000000').toLowerCase()
 
 export async function GET(request: Request) {
   try {
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     }
     
     // Check if user is creator or admin
-    const isAdmin = userAddress.toLowerCase() === ADMIN_WALLET.toLowerCase()
+    const isAdmin = userAddress.toLowerCase() === ADMIN_WALLET
     const isCreator = group.creator?.toLowerCase() === userAddress.toLowerCase()
     
     if (!isAdmin && !isCreator) {

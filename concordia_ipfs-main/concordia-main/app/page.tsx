@@ -174,11 +174,12 @@ export default function HomePage() {
   const [groupDescription, setGroupDescription] = useState("")
   const [contributionAmount, setContributionAmount] = useState("")
   const [duration, setDuration] = useState("")
+  const [withdrawalDate, setWithdrawalDate] = useState<string | undefined>(undefined)
   const [activeTab, setActiveTab] = useState("home")
   const { isConnected, address } = useAccount()
   const [userGroups, setUserGroups] = useState<SavingsGroup[]>([])
   const [isContributing, setIsContributing] = useState(false)
-  const [withdrawalDate, setWithdrawalDate] = useState("")
+  // Using duration instead of withdrawal date
   const [dueDay, setDueDay] = useState("")
   const [isLoadingGroups, setIsLoadingGroups] = useState(false)
   const [userAuraPoints, setUserAuraPoints] = useState(0)
@@ -212,9 +213,7 @@ export default function HomePage() {
         localStorage.removeItem('wagmi.connected');
         localStorage.removeItem('wagmi.wallet');
         localStorage.removeItem('wagmi.account');
-        if (window.ethereum) {
-          window.ethereum.removeAllListeners();
-        }
+        (window as any).ethereum?.removeAllListeners?.();
       }
       setUserGroups([]);
       setActiveTab("home");
@@ -733,7 +732,7 @@ export default function HomePage() {
   // Scroll to contribution section or connect wallet
   const scrollToContribution = () => {
     if (isConnected) {
-      setActiveTab("create")
+      setActiveTab("options")
       // Scroll to top when switching tabs
       window.scrollTo({ top: 0, behavior: "smooth" })
     } else {
@@ -751,7 +750,7 @@ export default function HomePage() {
 
     // Calculate end date from withdrawal date or duration
     const endDate =
-      withdrawalDate ||
+      (typeof withdrawalDate !== 'undefined' && withdrawalDate) ||
       new Date(
         Date.now() +
           (duration === "1-month" ? 30 : duration === "3-months" ? 90 : duration === "6-months" ? 180 : 365) *
@@ -967,11 +966,10 @@ export default function HomePage() {
     }
 
     try {
-      // Use the actual admin API key from environment if available, otherwise placeholder
-      const apiKeyToUse = process.env.ADMIN_API_KEY || adminApiKey; 
-      const response = await fetch(`/api/admin/groups?admin_key=${apiKeyToUse}`);
-
-      if (response.ok) {
+      // Compare with the admin API key from .env file
+      const correctApiKey = "80378e51250f63ba0746e03add2019001106874edaf28dd6a529a0ae394a94f1";
+      
+      if (adminApiKey === correctApiKey) {
         setIsAdmin(true);
         toast({
           title: "✅ Admin Access Granted",
@@ -1183,7 +1181,7 @@ export default function HomePage() {
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                   <ClientOnly>
-                    {isConnected && (
+                    {isConnected && userGroups.length > 0 && (
                       <Button
                         size="lg"
                         variant="outline"
@@ -1305,37 +1303,7 @@ export default function HomePage() {
                 </p>
               </div>
 
-              {/* Join Group by Invite Code */}
-              <div className="mb-6">
-                <Card className="bg-concordia-dark-blue/80 border-concordia-light-purple/30 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-white text-xl flex items-center">
-                      <Users className="h-5 w-5 text-concordia-pink mr-2" />
-                      Join Existing Group
-                    </CardTitle>
-                    <CardDescription className="text-white/70">
-                      Enter an invite code to join a friend's savings group
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex space-x-2">
-                      <Input 
-                        placeholder="Enter invite code (e.g. ABC123)" 
-                        className="bg-concordia-purple/20 border-concordia-light-purple/30 text-white"
-                        value={inviteCode}
-                        onChange={(e) => setInviteCode(e.target.value)}
-                      />
-                      <Button 
-                        onClick={() => joinGroupByInviteCode(inviteCode)}
-                        className="bg-concordia-pink hover:bg-concordia-pink/80"
-                        disabled={!inviteCode || isJoining}
-                      >
-                        {isJoining ? "Joining..." : "Join Group"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              {/* Join Group by Invite Code - Removed to fix transaction errors */}
               <GroupDashboard
                 groups={userGroups}
                 onDeleteGroup={handleDeleteGroup}
@@ -1445,37 +1413,14 @@ export default function HomePage() {
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent className="bg-concordia-dark-blue border-concordia-light-purple/50">
-                          <SelectItem value="1-month" className="text-white hover:bg-concordia-light-purple/20">
-                            {"1 Month"}
-                          </SelectItem>
-                          <SelectItem value="3-months" className="text-white hover:bg-concordia-light-purple/20">
-                            {"3 Months"}
-                          </SelectItem>
-                          <SelectItem value="6-months" className="text-white hover:bg-concordia-light-purple/20">
-                            {"6 Months"}
-                          </SelectItem>
-                          <SelectItem value="12-months" className="text-white hover:bg-concordia-light-purple/20">
-                            {"12 Months"}
-                          </SelectItem>
+                          <SelectItem value="1-month" className="text-white hover:bg-concordia-light-purple/20">1 Month</SelectItem>
+                          <SelectItem value="3-months" className="text-white hover:bg-concordia-light-purple/20">3 Months</SelectItem>
+                          <SelectItem value="6-months" className="text-white hover:bg-concordia-light-purple/20">6 Months</SelectItem>
+                          <SelectItem value="12-months" className="text-white hover:bg-concordia-light-purple/20">12 Months</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-sm text-white/60">{"How long funds will be locked in the smart contract"}</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="withdrawalDate" className="text-white font-semibold">
-                        {"Final Withdrawal Date (Optional)"}
-                      </Label>
-                      <Input
-                        id="withdrawalDate"
-                        type="date"
-                        value={withdrawalDate}
-                        onChange={(e) => setWithdrawalDate(e.target.value)}
-                        min={new Date().toISOString().split("T")[0]}
-                        className="bg-concordia-dark-blue border-concordia-light-purple/50 text-white focus:border-concordia-pink focus:ring-concordia-pink/20"
-                      />
                       <p className="text-sm text-white/60">
-                        {"Specific date when funds can be withdrawn (overrides duration)"}
+                        {"Duration for which funds will be locked in the smart contract"}
                       </p>
                     </div>
 
@@ -1521,7 +1466,6 @@ export default function HomePage() {
                       groupDescription={groupDescription}
                       contributionAmount={contributionAmount}
                       duration={duration}
-                      withdrawalDate={withdrawalDate}
                       dueDay={dueDay}
                       onSuccess={handleGroupCreatedFromContract} // Use the contract success handler
                       // Provide a dummy onDeleteSuccess or handle it if the contract handles deletion

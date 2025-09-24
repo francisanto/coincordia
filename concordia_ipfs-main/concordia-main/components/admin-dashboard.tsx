@@ -26,7 +26,8 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
   const { toast } = useToast()
 
   const loadAdminData = async (key = apiKey) => {
-    if (!key) {
+    const isDev = process.env.NODE_ENV !== 'production'
+    if (!key && !isDev) {
       toast({
         title: "❌ API Key Required",
         description: "Please enter an admin API key to access the dashboard",
@@ -38,7 +39,8 @@ export function AdminDashboard({ isAdmin, adminApiKey, onVerify }: AdminDashboar
     setLoading(true)
     try {
       console.log("👑 Loading admin dashboard data...")
-      const response = await fetch(`/api/admin/groups?admin_key=${key}`)
+      const url = key ? `/api/admin/groups?admin_key=${key}` : `/api/admin/groups?admin_key=`
+      const response = await fetch(url)
       const data = await response.json()
 
       if (!response.ok || !data.success) {

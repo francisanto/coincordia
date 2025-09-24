@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectToMongoDB } from '@/lib/mongodb'
 
-const ADMIN_WALLET = process.env.ADMIN_ADDRESS || '0xdA13e8F82C83d14E7aa639354054B7f914cA0998'
+const ADMIN_WALLET = (process.env.ADMIN_ADDRESS || '0x0000000000000000000000000000000000000000').toLowerCase()
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    const isAdmin = userAddress.toLowerCase() === ADMIN_WALLET.toLowerCase()
+    const isAdmin = userAddress.toLowerCase() === ADMIN_WALLET
 
     if (!isAdmin) {
       // For new groups, creator has access
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       // Check if group already exists
       const existingGroup = await collection.findOne({ id: groupId });
       
-      let result;
+      let result: any;
       if (existingGroup) {
         // Update existing group
         result = await collection.updateOne(
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         result = await collection.insertOne(updatedGroupData);
       }
       
-      if (!result.acknowledged) {
+      if (!('acknowledged' in result) || !result.acknowledged) {
         throw new Error('Failed to store group data in MongoDB');
       }
       

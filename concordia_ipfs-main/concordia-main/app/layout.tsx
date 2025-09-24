@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import { Inter, Orbitron } from "next/font/google" // Import Orbitron
 import "./globals.css"
 import { Providers } from "./providers"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" }) // Define Inter as a CSS variable
 const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-orbitron" }) // Define Orbitron as a CSS variable
@@ -24,7 +26,14 @@ export default function RootLayout({
       <body className="font-sans">
         {" "}
         {/* Use font-sans to apply Inter by default, then override with Orbitron */}
-        <Providers>{children}</Providers>
+        <Providers>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+        </Providers>
       </body>
     </html>
   )
