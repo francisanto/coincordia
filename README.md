@@ -127,16 +127,6 @@ npx hardhat test
 npm run deploy:contract
 ```
 
-## 🌐 Deployment
-
-### Vercel Deployment
-
-The app is configured for seamless Vercel deployment:
-
-1. **API Routes**: All backend functionality via Next.js API routes
-2. **Environment Variables**: Secure configuration management
-3. **Global CDN**: Fast loading worldwide
-4. **Auto-deployment**: Connected to GitHub repository
 
 ### Environment Setup
 
@@ -233,14 +223,6 @@ MIT License - see LICENSE file for details
 
 ---
 
-## 🚀 Ready to Deploy?
 
-Your Concordia DApp is now ready for production deployment with:
-
-- ✅ **Permanent BNB Greenfield Storage**
-- ✅ **Public Vercel Deployment**
-- ✅ **Team Member Access**
-- ✅ **No Data Loss Guarantee**
-- ✅ **Blockchain Security**
 
 Start saving together with your team! 🎯 
